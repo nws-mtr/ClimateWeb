@@ -37,7 +37,7 @@ class SynopticClient:
         params = {
             "stid": ",".join(station_ids),
             "token": self.api_key,
-            "vars": "air_temp,relative_humidity",
+            "vars": "air_temp,relative_humidity,precip_accum_one_hour",
             "showemptystations": 1,
         }
         query = urllib.parse.urlencode(params)
