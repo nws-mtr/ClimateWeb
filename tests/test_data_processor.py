@@ -14,6 +14,7 @@ def test_extract_single_value_handles_various_inputs():
     assert _extract_single_value([1.5, 2]) == 1.5
     assert _extract_single_value([]) is None
     assert _extract_single_value("3.5") == 3.5
+    assert _extract_single_value({"value": "3.0"}) == 3.0
     assert _extract_single_value("not-a-number") is None
     assert _extract_single_value(None) is None
 
@@ -99,8 +100,63 @@ def test_format_station_data_returns_simplified_payload():
     assert result["air_temp_value_1"] == pytest.approx(70.1)
     assert result["relative_humidity_value_1"] == pytest.approx(40)
     assert result["precip_accum_one_hour_value_1"] == pytest.approx(0.0)
+    assert result["precip_type"] == "auto"
+    assert result["daily_accum"] is None
+    assert result["wy_accum"] is None
     assert result["min_temp_since_midnight"] == pytest.approx(68.0)
     assert result["max_temp_since_midnight"] == pytest.approx(71.5)
+
+
+def test_format_station_data_accum_precip_logic_same_day_baseline():
+    station = {
+        "STID": "ACCUM1",
+        "NAME": "Accum Station",
+        "TIMEZONE": "UTC",
+        "PRECIP_TYPE": "accum",
+        "OBSERVATIONS": {
+            "precip_accum_value_1": [
+                {"value": 5.0, "date_time": "2025-11-21T08:00:00Z"},
+                {"value": 7.5, "date_time": "2025-11-21T12:00:00Z"},
+            ],
+            "date_time": [
+                "2025-11-21T08:00:00Z",
+                "2025-11-21T12:00:00Z",
+            ],
+        },
+    }
+
+    result = format_station_data(station)
+
+    assert result["precip_type"] == "accum"
+    assert result["precip_accum_value_1"] == pytest.approx(7.5)
+    assert result["wy_accum"] == pytest.approx(7.5)
+    assert result["daily_accum"] == pytest.approx(2.5)
+
+
+def test_format_station_data_accum_precip_logic_previous_day_baseline():
+    station = {
+        "STID": "ACCUM2",
+        "NAME": "Accum Station 2",
+        "TIMEZONE": "UTC",
+        "PRECIP_TYPE": "accum",
+        "OBSERVATIONS": {
+            "precip_accum_value_1": [
+                {"value": 10.0, "date_time": "2025-11-20T08:00:00Z"},
+                {"value": 12.5, "date_time": "2025-11-21T03:00:00Z"},
+            ],
+            "date_time": [
+                "2025-11-20T08:00:00Z",
+                "2025-11-21T03:00:00Z",
+            ],
+        },
+    }
+
+    result = format_station_data(station)
+
+    assert result["precip_type"] == "accum"
+    assert result["precip_accum_value_1"] == pytest.approx(12.5)
+    assert result["wy_accum"] == pytest.approx(12.5)
+    assert result["daily_accum"] == pytest.approx(2.5)
 
 
 def test_build_station_payload_formats_each_station():

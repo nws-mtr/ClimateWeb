@@ -2,9 +2,30 @@ import json
 import os
 import urllib.parse
 import urllib.request
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from typing import Any, Dict, List
+from datetime import datetime, timezone
 
+current = datetime.now(timezone.utc)
+
+def start_date(now: datetime | None = None) -> str:
+    """
+    Return the most recent past (or equal) Oct 1 0700Z
+    as a string YYYYMMDDHHMM.
+    """
+    # Use current UTC time if not provided
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    year = now.year
+    target = datetime(year, 10, 1, 7, 0, tzinfo=timezone.utc)
+
+    # If we're before this year's Oct 1 0700Z, use last year's
+    if now < target:
+        year -= 1
+        target = datetime(year, 10, 1, 7, 0, tzinfo=timezone.utc)
+
+    return target.strftime("%Y%m%d%H%M")
 
 class SynopticAPIError(Exception):
     """Custom error for Synoptic API issues."""
@@ -13,10 +34,11 @@ class SynopticAPIError(Exception):
 class SynopticClient:
     """Client for interacting with the Synoptic API."""
 
-    BASE_URL = "https://api.synopticdata.com/v2/stations/latest"
+    BASE_URL = "https://api.synopticdata.com/v2/stations/timeseries"
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.api_key = api_key or os.environ.get("SYNOPTIC_KEY")
+        # Strip whitespace to avoid accidental quote/newline issues from env files.
+        self.api_key = (api_key or os.environ.get("SYNOPTIC_KEY", "")).strip()
         if not self.api_key:
             raise SynopticAPIError(
                 "Synoptic API key is missing. Set the SYNOPTIC_KEY environment variable."
@@ -37,8 +59,10 @@ class SynopticClient:
         params = {
             "stid": ",".join(station_ids),
             "token": self.api_key,
-            "vars": "air_temp,relative_humidity,precip_accum_one_hour",
+            "vars": "air_temp,relative_humidity,precip_accum,precip_accum_one_hour",
             "showemptystations": 1,
+            "start": start_date(current),
+            "end": current.strftime("%Y%m%d%H%M")
         }
         query = urllib.parse.urlencode(params)
         url = f"{self.BASE_URL}?{query}"
@@ -51,6 +75,13 @@ class SynopticClient:
                     )
 
                 payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            # Surface response body for clearer debugging (e.g., invalid token or auth issues).
+            body = exc.read()
+            details = body.decode("utf-8", errors="ignore") if body else exc.reason
+            raise SynopticAPIError(
+                f"HTTP error {exc.code} during API call: {details or 'no response body'}"
+            )
         except URLError as exc:
             raise SynopticAPIError(f"Network error during API call: {exc}")
 

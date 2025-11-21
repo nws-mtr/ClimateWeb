@@ -26,7 +26,7 @@ STATION_IDS = [
     "CTOC1",
 ]
 
-OUTPUT_PATH = Path("data/synoptic_stations.json")
+OUTPUT_PATH = Path("synoptic_stations.json")
 
 
 def main() -> None:
