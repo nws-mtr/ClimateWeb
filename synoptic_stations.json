@@ -5,12 +5,21 @@
     "elevation": "23.0",
     "latitude": "37.99167",
     "longitude": "-122.05194",
-    "date_time": "2025-11-21T22:53:00Z",
-    "air_temp": 64.04,
-    "daily_maxT": 64.4,
-    "daily_minT": 42.8,
-    "relative_humidity": 51.97,
-    "precip_accum_one_hour": null
+    "dateTime": "2025-11-22T21:53:00Z",
+    "airTempF": 66,
+    "dailyMaxF": 66,
+    "dailyMinF": 43
+  },
+  {
+    "stid": "KMRY",
+    "name": "Monterey Regional Airport",
+    "elevation": "167.0",
+    "latitude": "36.59047",
+    "longitude": "-121.84875",
+    "dateTime": "2025-11-22T21:54:00Z",
+    "airTempF": 59,
+    "dailyMaxF": 61,
+    "dailyMinF": 45
   },
   {
     "stid": "KSFO",
@@ -18,12 +27,10 @@
     "elevation": "10.0",
     "latitude": "37.61961",
     "longitude": "-122.36558",
-    "date_time": "2025-11-21T22:56:00Z",
-    "air_temp": 62.959999999999994,
-    "daily_maxT": 64.4,
-    "daily_minT": 48.02,
-    "relative_humidity": 51.81,
-    "precip_accum_one_hour": null
+    "dateTime": "2025-11-22T21:56:00Z",
+    "airTempF": 63,
+    "dailyMaxF": 63,
+    "dailyMinF": 47
   },
   {
     "stid": "KSJC",
@@ -31,12 +38,10 @@
     "elevation": "59.0",
     "latitude": "37.35917",
     "longitude": "-121.92417",
-    "date_time": "2025-11-21T22:53:00Z",
-    "air_temp": 64.04,
-    "daily_maxT": 64.4,
-    "daily_minT": 46.4,
-    "relative_humidity": 46.25,
-    "precip_accum_one_hour": null
+    "dateTime": "2025-11-22T21:53:00Z",
+    "airTempF": 65,
+    "dailyMaxF": 65,
+    "dailyMinF": 44
   },
   {
     "stid": "KSNS",
@@ -44,12 +49,10 @@
     "elevation": "82.0",
     "latitude": "36.66361",
     "longitude": "-121.60806",
-    "date_time": "2025-11-21T22:53:00Z",
-    "air_temp": 60.08,
-    "daily_maxT": 64.4,
-    "daily_minT": 44.6,
-    "relative_humidity": 61.82,
-    "precip_accum_one_hour": null
+    "dateTime": "2025-11-22T21:53:00Z",
+    "airTempF": 67,
+    "dailyMaxF": 67,
+    "dailyMinF": 43
   },
   {
     "stid": "CTOC1",
@@ -57,12 +60,12 @@
     "elevation": "327.0",
     "latitude": "36.990860",
     "longitude": "-121.804880",
-    "date_time": "2025-11-21T22:27:00Z",
-    "air_temp": 64.9994,
-    "daily_maxT": 64.9994,
-    "daily_minT": 42.0008,
-    "daily_accum": 0.0,
-    "wy_accum": 8.6
+    "dateTime": "2025-11-22T22:27:00Z",
+    "airTempF": 69,
+    "dailyMaxF": 69,
+    "dailyMinF": 43,
+    "dailyAccumIN": 0.01,
+    "waterYearIN": 8.61
   },
   {
     "stid": "HDZC1",
@@ -70,12 +73,12 @@
     "elevation": "3733.0",
     "latitude": "36.382540",
     "longitude": "-120.855820",
-    "date_time": "2025-11-21T22:07:00Z",
-    "air_temp": 53.9996,
-    "daily_maxT": 53.9996,
-    "daily_minT": 39.0002,
-    "daily_accum": 0.02,
-    "wy_accum": 4.67
+    "dateTime": "2025-11-22T22:07:00Z",
+    "airTempF": 59,
+    "dailyMaxF": 59,
+    "dailyMinF": 42,
+    "dailyAccumIN": 0.0,
+    "waterYearIN": 4.67
   },
   {
     "stid": "PKFC1",
@@ -83,12 +86,12 @@
     "elevation": "1525.0",
     "latitude": "35.898310",
     "longitude": "-120.433290",
-    "date_time": "2025-11-21T21:55:00Z",
-    "air_temp": 59.0,
-    "daily_maxT": 60.9998,
-    "daily_minT": 44.0006,
-    "daily_accum": 0.0,
-    "wy_accum": 4.4
+    "dateTime": "2025-11-22T21:55:00Z",
+    "airTempF": 63,
+    "dailyMaxF": 65,
+    "dailyMinF": 36,
+    "dailyAccumIN": 0.01,
+    "waterYearIN": 4.41
   },
   {
     "stid": "SRTC1",
@@ -96,12 +99,12 @@
     "elevation": "5036.0",
     "latitude": "36.348110",
     "longitude": "-120.600110",
-    "date_time": "2025-11-21T21:57:00Z",
-    "air_temp": 51.0008,
-    "daily_maxT": 51.0008,
-    "daily_minT": 33.9998,
-    "daily_accum": 0.05,
-    "wy_accum": 4.65
+    "dateTime": "2025-11-22T21:57:00Z",
+    "airTempF": 54,
+    "dailyMaxF": 54,
+    "dailyMinF": 39,
+    "dailyAccumIN": 0.0,
+    "waterYearIN": 4.65
   },
   {
     "stid": "SFOC1",
@@ -109,12 +112,12 @@
     "elevation": "150.0",
     "latitude": "37.77056",
     "longitude": "-122.42694",
-    "date_time": "2025-11-21T22:43:00Z",
-    "air_temp": 62.310199999999995,
-    "daily_maxT": 62.310199999999995,
-    "daily_minT": 47.9102,
-    "daily_accum": 0.0,
-    "wy_accum": 3.41
+    "dateTime": "2025-11-22T22:43:00Z",
+    "airTempF": 60,
+    "dailyMaxF": 65,
+    "dailyMinF": 49,
+    "dailyAccumIN": 0.0,
+    "waterYearIN": 3.53
   },
   {
     "stid": "SARC1",
@@ -122,12 +125,12 @@
     "elevation": "120.0",
     "latitude": "37.99938",
     "longitude": "-122.53223",
-    "date_time": "2025-11-21T22:00:00Z",
-    "air_temp": 64.1606,
-    "daily_maxT": 64.5998,
-    "daily_minT": 43.059200000000004,
-    "daily_accum": 0.0,
-    "wy_accum": 6.38
+    "dateTime": "2025-11-22T22:00:00Z",
+    "airTempF": 66,
+    "dailyMaxF": 66,
+    "dailyMinF": 42,
+    "dailyAccumIN": 0.0,
+    "waterYearIN": 6.39
   },
   {
     "stid": "RWCC1",
@@ -135,12 +138,12 @@
     "elevation": "10.0",
     "latitude": "37.48780",
     "longitude": "-122.21390",
-    "date_time": "2025-11-21T22:05:00Z",
-    "air_temp": 64.6502,
-    "daily_maxT": 64.6502,
-    "daily_minT": 43.79,
-    "daily_accum": 0.0,
-    "wy_accum": 17.39
+    "dateTime": "2025-11-22T22:05:00Z",
+    "airTempF": 68,
+    "dailyMaxF": 69,
+    "dailyMinF": 41,
+    "dailyAccumIN": 0.0,
+    "waterYearIN": 3.82
   },
   {
     "stid": "OAMC1",
@@ -148,24 +151,11 @@
     "elevation": "30.0",
     "latitude": "37.79810",
     "longitude": "-122.26343",
-    "date_time": "2025-11-21T22:00:00Z",
-    "air_temp": 64.90039999999999,
-    "daily_maxT": 64.90039999999999,
-    "daily_minT": 47.7302,
-    "daily_accum": 0.0,
-    "wy_accum": 3.94
-  },
-  {
-    "stid": "HMBC1",
-    "name": "HALF MOON BAY SAN MATEO",
-    "elevation": "25.0",
-    "latitude": "37.47250",
-    "longitude": "-122.44330",
-    "date_time": "2025-11-20T23:00:00Z",
-    "air_temp": 57.02,
-    "daily_maxT": null,
-    "daily_minT": null,
-    "daily_accum": null,
-    "wy_accum": null
+    "dateTime": "2025-11-22T22:00:00Z",
+    "airTempF": 65,
+    "dailyMaxF": 65,
+    "dailyMinF": 47,
+    "dailyAccumIN": 0.0,
+    "waterYearIN": 3.94
   }
 ]

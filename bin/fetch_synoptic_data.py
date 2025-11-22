@@ -10,16 +10,19 @@ if str(ROOT_DIR) not in sys.path:
 from lib.synoptic_client import SynopticClient, SynopticAPIError
 from src.data_processor import build_station_payload
 
-STATION_IDS = [
-    "OAMC1",
+ASOS = [
     "KCCR",
-    "SARC1",
     "KSNS",
-    "SFOC1",
     "KSFO",
-    "HMBC1",
-    "RWCC1",
     "KSJC",
+    "KMRY",
+]
+
+HADS = [
+    "OAMC1",
+    "SARC1",
+    "SFOC1",
+    "RWCC1",
     "PKFC1",
     "SRTC1",
     "HDZC1",
@@ -32,16 +35,24 @@ OUTPUT_PATH = Path("synoptic_stations.json")
 def main() -> None:
     client = SynopticClient()
     try:
-        response = client.fetch_latest(STATION_IDS)
+        responseA = client.fetch_latest(ASOS)
+        responseB = client.fetch_precip(ASOS)
+        responseC = client.fetch_timeseries(HADS)
     except SynopticAPIError as exc:
         raise SystemExit(f"Failed to fetch station data: {exc}")
 
-    stations = response.get("STATION", [])
-    payload = build_station_payload(stations)
+    stationsA = responseA.get("STATION", [])
+    stationsB = responseB.get("STATION", [])
+    stationsC = responseC.get("STATION", [])
+    payloadA = build_station_payload(stationsA, type="ASOS_latest")
+    payloadB = build_station_payload(stationsB, type="ASOS_precip")
+    payloadC = build_station_payload(stationsC, type="HADS")
+
+    combined = payloadA + payloadC
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"Saved data for {len(payload)} stations to {OUTPUT_PATH}")
+    OUTPUT_PATH.write_text(json.dumps(combined, indent=2), encoding="utf-8")
+    print(f"Saved data for {len(combined)} stations to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

@@ -34,7 +34,9 @@ class SynopticAPIError(Exception):
 class SynopticClient:
     """Client for interacting with the Synoptic API."""
 
-    BASE_URL = "https://api.synopticdata.com/v2/stations/timeseries"
+    TS_URL = "https://api.synopticdata.com/v2/stations/timeseries"
+    LATEST_URL = "https://api.synopticdata.com/v2/stations/timeseries"
+    PRECIP_URL = "https://api.synopticdata.com/v2/stations/precipitation"
 
     def __init__(self, api_key: str | None = None) -> None:
         # Strip whitespace to avoid accidental quote/newline issues from env files.
@@ -44,6 +46,55 @@ class SynopticClient:
                 "Synoptic API key is missing. Set the SYNOPTIC_KEY environment variable."
             )
 
+    def fetch_timeseries(self, station_ids: List[str]) -> Dict[str, Any]:
+        """Fetch the timeseries of observations for the given station IDs.
+
+        Args:
+            station_ids: List of station identifiers.
+
+        Returns:
+            Parsed JSON response from the API.
+
+        Raises:
+            SynopticAPIError: When the API request fails or returns an error.
+        """
+        params = {
+            "stid": ",".join(station_ids),
+            "token": self.api_key,
+            "vars": "air_temp,precip_accum",
+            "showemptystations": 1,
+            "start": start_date(current),
+            "end": current.strftime("%Y%m%d%H%M"),
+            "hfmetars": 0
+        }
+        query = urllib.parse.urlencode(params)
+        url = f"{self.TS_URL}?{query}"
+
+        try:
+            with urllib.request.urlopen(url, timeout=20) as response:
+                if response.status != 200:
+                    raise SynopticAPIError(
+                        f"Request failed with status {response.status}: {response.read()}"
+                    )
+
+                payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            # Surface response body for clearer debugging (e.g., invalid token or auth issues).
+            body = exc.read()
+            details = body.decode("utf-8", errors="ignore") if body else exc.reason
+            raise SynopticAPIError(
+                f"HTTP error {exc.code} during API call: {details or 'no response body'}"
+            )
+        except URLError as exc:
+            raise SynopticAPIError(f"Network error during API call: {exc}")
+
+        if payload.get("SUMMARY", {}).get("RESPONSE_CODE") != 1:
+            raise SynopticAPIError(
+                f"API error: {payload.get('SUMMARY', {}).get('RESPONSE_MESSAGE')}"
+            )
+
+        return payload
+    
     def fetch_latest(self, station_ids: List[str]) -> Dict[str, Any]:
         """Fetch the latest observations for the given station IDs.
 
@@ -59,13 +110,63 @@ class SynopticClient:
         params = {
             "stid": ",".join(station_ids),
             "token": self.api_key,
-            "vars": "air_temp,relative_humidity,precip_accum,precip_accum_one_hour",
+            "vars": "air_temp,air_temp_high_6_hour,air_temp_low_6_hour",
             "showemptystations": 1,
-            "start": start_date(current),
-            "end": current.strftime("%Y%m%d%H%M")
+            "recent": 1440,
+            "hfmetars": 0
         }
         query = urllib.parse.urlencode(params)
-        url = f"{self.BASE_URL}?{query}"
+        url = f"{self.LATEST_URL}?{query}"
+
+        try:
+            with urllib.request.urlopen(url, timeout=20) as response:
+                if response.status != 200:
+                    raise SynopticAPIError(
+                        f"Request failed with status {response.status}: {response.read()}"
+                    )
+
+                payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            # Surface response body for clearer debugging (e.g., invalid token or auth issues).
+            body = exc.read()
+            details = body.decode("utf-8", errors="ignore") if body else exc.reason
+            raise SynopticAPIError(
+                f"HTTP error {exc.code} during API call: {details or 'no response body'}"
+            )
+        except URLError as exc:
+            raise SynopticAPIError(f"Network error during API call: {exc}")
+
+        if payload.get("SUMMARY", {}).get("RESPONSE_CODE") != 1:
+            raise SynopticAPIError(
+                f"API error: {payload.get('SUMMARY', {}).get('RESPONSE_MESSAGE')}"
+            )
+
+        return payload
+
+    def fetch_precip(self, station_ids: List[str]) -> Dict[str, Any]:
+        """Fetch the timeseries of observations for the given station IDs.
+
+        Args:
+            station_ids: List of station identifiers.
+
+        Returns:
+            Parsed JSON response from the API.
+
+        Raises:
+            SynopticAPIError: When the API request fails or returns an error.
+        """
+        params = {
+            "stid": ",".join(station_ids),
+            "token": self.api_key,
+            "pmode": "intervals",
+            "interval": "hour",
+            "showemptystations": 1,
+            "start": start_date(current),
+            "end": current.strftime("%Y%m%d%H%M"),
+        }
+
+        query = urllib.parse.urlencode(params)
+        url = f"{self.PRECIP_URL}?{query}"
 
         try:
             with urllib.request.urlopen(url, timeout=20) as response:
