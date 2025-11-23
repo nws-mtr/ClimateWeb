@@ -29,8 +29,8 @@ stations = load_station_ids()
 ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
 
-def main() -> None:
 
+def fetch_xmacis_precip() -> List:
     start = start_of_water_year_iso()
     end = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
@@ -40,7 +40,12 @@ def main() -> None:
     except XMACISAPIError as exc:
         raise SystemExit(f"Failed to fetch precipitation data: {exc}")
 
-    vals = response.get("smry", [])
+    return response.get("smry", [])
+
+
+def main() -> None:
+    vals = fetch_xmacis_precip()
+    print(f"Fetched {len(vals)} precipitation summary entries from XMACIS.")
 
 if __name__ == "__main__":
     main()
