@@ -3,7 +3,7 @@ import json
 import yaml
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -23,9 +23,7 @@ stations = load_station_ids()
 ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
 
-OUTPUT_PATH = Path("synoptic_stations.json")
-
-def main() -> None:
+def fetch_synoptic_data() -> Tuple[List[dict], List[dict], List[dict]]:
     client = SynopticClient()
     try:
         responseA = client.fetch_latest(ASOS)
@@ -37,14 +35,23 @@ def main() -> None:
     stationsA = responseA.get("STATION", [])
     stationsB = responseB.get("STATION", [])
     stationsC = responseC.get("STATION", [])
+
+    return stationsA, stationsB, stationsC
+
+
+def main() -> None:
+    stationsA, stationsB, stationsC = fetch_synoptic_data()
+
     payloadA = build_station_payload(stationsA, stationsB, type="ASOS")
     payloadB = build_station_payload(stationsC, type="HADS")
 
     combined = payloadA + payloadB
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(combined, indent=2), encoding="utf-8")
-    print(f"Saved data for {len(combined)} stations to {OUTPUT_PATH}")
+    print(
+        "Fetched synoptic data for "
+        f"{len(stationsA)} ASOS and {len(stationsC)} HADS stations."
+    )
+    print(f"Built payloads for {len(combined)} stations.")
 
 
 if __name__ == "__main__":
