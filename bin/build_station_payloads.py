@@ -16,20 +16,16 @@ from src.data_processor import build_station_payload
 
 OUTPUT_PATH = Path("station_payloads.json")
 
-
 def build_payloads() -> Dict[str, Any]:
     stationsA, stationsB, stationsC = fetch_synoptic_data()
 
     payloadA = build_station_payload(stationsA, stationsB, type="ASOS")
     payloadB = build_station_payload(stationsC, type="HADS")
 
-    precip_summary = fetch_xmacis_precip()
-
     combined: List[Dict[str, Any]] = payloadA + payloadB
 
     return {
         "stations": combined,
-        "precipSummary": precip_summary,
     }
 
 

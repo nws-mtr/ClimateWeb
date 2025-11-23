@@ -6,7 +6,7 @@ import sys
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Any, Dict
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -30,13 +30,13 @@ ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
 
 
-def fetch_xmacis_precip() -> List:
+def fetch_xmacis_precip(station: Dict[str, Any]) -> Dict[str, Any]:
     start = start_of_water_year_iso()
     end = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     client = XMACISClient()
     try:
-        response = client.fetch_precip_with_normals(ASOS[0], start=start, end=end)
+        response = client.fetch_precip_with_normals(station, start=start, end=end)
     except XMACISAPIError as exc:
         raise SystemExit(f"Failed to fetch precipitation data: {exc}")
 

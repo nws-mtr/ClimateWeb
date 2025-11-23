@@ -2,6 +2,8 @@ import numpy as np
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from bin.fetch_xmacis_precip import fetch_xmacis_precip
+
 try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover - fallback for older Python
@@ -25,6 +27,14 @@ def get_midnight():
         midnight -= timedelta(days=1)
 
     return midnight
+
+def _get_precip_from_acis(stid: Dict[str, Any]) -> Dict[str, Any]:
+    acis = fetch_xmacis_precip(stid)
+
+    wy_in = acis[0]
+    norm_in = acis[1]
+
+    return wy_in, norm_in
 
 def _compute_daily_from_cumulative(
     cumulative_obs: Any, fallback_time: Any
@@ -262,6 +272,9 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
     wy_in = mm_to_in(wy_accum[-1])
     daily_in = mm_to_in(daily_accum)
 
+    stid = station.get("STATION", {}).get("STID", [])
+    wy_in, norm_in = _get_precip_from_acis(stid)
+
     return {
         "stid": station.get("STID"),
         "name": station.get("NAME"),
@@ -274,6 +287,7 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
         "dailyMinF": minF,
         "dailyAccumIN": daily_in,
         "waterYearIN": wy_in,
+        "waterYearNormIN": norm_in,
     }
 
 def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -309,6 +323,10 @@ def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) 
 
     daily_in = mm_to_in(daily_accum)
 
+    if station_b is not None:
+        stid = station_b.get("STATION", {}).get("STID", [])
+        wy_in, norm_in = _get_precip_from_acis(stid)
+
     return {
             "stid": station_a.get("STID"),
             "name": station_a.get("NAME"),
@@ -320,6 +338,8 @@ def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) 
             "dailyMaxF": maxF,
             "dailyMinF": minF,
             "dailyAccumIN": daily_in,
+            "waterYearIN": wy_in,
+            "waterYearNormIN": norm_in,
         }
 
 def build_station_payload(
