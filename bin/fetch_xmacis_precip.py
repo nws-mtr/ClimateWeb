@@ -29,14 +29,62 @@ stations = load_station_ids()
 ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
 
-def fetch_xmacis_precip(station: Dict[str, Any]) -> Dict[str, Any]:
+def load_xmacis_fallbacks(path: str = "config/stations.yaml") -> Dict[str, str]:
+    """Load optional XMACIS fallback station IDs from config."""
+
+    p = Path(path)
+    with p.open("r") as f:
+        data = yaml.safe_load(f) or {}
+
+    raw_fallbacks = data.get("xmacis_fallbacks", {}) or {}
+
+    fallbacks: Dict[str, str] = {}
+    for primary, secondary in raw_fallbacks.items():
+        if primary is None or secondary is None:
+            continue
+
+        primary_id = str(primary).strip()
+        secondary_id = str(secondary).strip()
+
+        if not primary_id or not secondary_id:
+            continue
+
+        fallbacks[primary_id] = secondary_id
+
+    return fallbacks
+
+
+XMACIS_FALLBACKS: Dict[str, str] = load_xmacis_fallbacks()
+
+
+def fetch_xmacis_precip(station: str) -> Dict[str, Any]:
     start = start_of_water_year_iso()
     end = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     client = XMACISClient()
+
+    def _request(station_id: str) -> Dict[str, Any]:
+        return client.fetch_precip_with_normals(station_id, start=start, end=end)
+
     try:
-        response = client.fetch_precip_with_normals(station, start=start, end=end)
+        response = _request(station)
     except XMACISAPIError as exc:
-        raise SystemExit(f"Failed to fetch precipitation data: {exc}")
+        fallback_station = XMACIS_FALLBACKS.get(station)
+
+        if not fallback_station:
+            raise SystemExit(f"Failed to fetch precipitation data: {exc}")
+
+        try:
+            response = _request(fallback_station)
+            print(
+                "Using XMACIS fallback station",
+                f"{fallback_station!r} for primary station {station!r}",
+            )
+        except XMACISAPIError as fallback_exc:
+            raise SystemExit(
+                "Failed to fetch precipitation data after trying fallback: "
+                f"primary={station!r} ({exc}); "
+                f"fallback={fallback_station!r} ({fallback_exc})"
+            )
 
     return response.get("smry", [])
