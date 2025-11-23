@@ -8,7 +8,6 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from lib.synoptic_client import SynopticClient, SynopticAPIError
-from src.data_processor import build_station_payload
 
 ASOS = [
     "KCCR",
@@ -29,10 +28,9 @@ HADS = [
     "CTOC1",
 ]
 
-OUTPUT_PATH = Path("synoptic_stations.json")
+def fetch_synoptic_data() -> tuple[list[dict], list[dict], list[dict]]:
+    """Fetch raw station responses from the Synoptic API."""
 
-
-def main() -> None:
     client = SynopticClient()
     try:
         responseA = client.fetch_latest(ASOS)
@@ -44,14 +42,19 @@ def main() -> None:
     stationsA = responseA.get("STATION", [])
     stationsB = responseB.get("STATION", [])
     stationsC = responseC.get("STATION", [])
-    payloadA = build_station_payload(stationsA, stationsB, type="ASOS")
-    payloadB = build_station_payload(stationsC, type="HADS")
+    return stationsA, stationsB, stationsC
 
-    combined = payloadA + payloadB
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(json.dumps(combined, indent=2), encoding="utf-8")
-    print(f"Saved data for {len(combined)} stations to {OUTPUT_PATH}")
+def main() -> None:
+    stationsA, stationsB, stationsC = fetch_synoptic_data()
+
+    payload = {
+        "stationsA": stationsA,
+        "stationsB": stationsB,
+        "stationsC": stationsC,
+    }
+
+    print(json.dumps(payload, indent=2))
 
 
 if __name__ == "__main__":
