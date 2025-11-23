@@ -62,41 +62,77 @@ def _compute_daily_from_cumulative(
 
     return daily
 
-def _compute_daily_from_hourly(
-    cumulative_obs: Any, fallback_time: Any
-) -> Tuple[Optional[float], Optional[float]]:
-    """Compute (latest cumulative value, daily increment since local midnight)."""
-    entries: List[Tuple[datetime, float]] = []
-        
-    if cumulative_obs is None:
+def _compute_precip_from_hourly(
+    hourly: Any,
+    fallback_time: Any,
+    period: str = "daily",  # "daily" or "wateryear"
+) -> Optional[float]:
+    """Compute precip increment with low-value filtering.
+
+    Args:
+        hourly: Sequence of hourly amounts (not cumulative), or None.
+        fallback_time: Corresponding timestamps (ISO UTC strings).
+        period: "daily" => sum since local midnight;
+                "wateryear" => sum over entire period.
+
+    Logic:
+      - Interpret `hourly` as hourly amounts.
+      - Any obs < 0.254 is treated as 0.0.
+      - For "daily", only sum values with timestamps >= local midnight.
+      - For "wateryear", sum all values in the series.
+    """
+    if period not in ("daily", "wateryear"):
+        raise ValueError(f"period must be 'daily' or 'wateryear', got {period!r}")
+
+    entries: List[Tuple[str, Optional[float]]] = []
+
+    if hourly is None:
+        # No data; keep timestamps but vals are None
         for t in fallback_time:
             entries.append((t, None))
     else:
-        for t, obs in zip(fallback_time, cumulative_obs):
+        for t, obs in zip(fallback_time, hourly):
             entries.append((t, obs))
 
     if not entries:
-        return None, None
+        return None
 
+    # Sort by timestamp (assumed ISO strings like "YYYY-MM-DDTHH:MM:SSZ")
     entries.sort(key=lambda item: item[0])
-    latest_dt, latest_val = entries[-1]
-    mn = get_midnight()
 
-    baseline_val: Optional[float] = None
-    for dt_, val in reversed(entries):
-        dt = datetime.strptime(dt_, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        if dt <= mn:
-            baseline_val = val
+    # Latest non-None hourly value (kept here in case you want it later)
+    latest_val: Optional[float] = None
+    for dt_str, val in reversed(entries):
+        if val is not None:
+            latest_val = val
             break
 
-    if baseline_val is None:
+    # Only needed for daily mode
+    mn = get_midnight() if period == "daily" else None
+
+    total = 0.0
+    has_any = False
+
+    for dt_str, val in entries:
+        # Parse to aware UTC datetime
+        dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+        if val is None:
+            continue
+
+        if period == "daily" and dt < mn:
+            # Skip pre-midnight in daily mode
+            continue
+
+        has_any = True
+        v = val if val >= 0.254 else 0.0  # filter small amounts
+        if v > 0.0:
+            total += v
+
+    if not has_any:
         return None
 
-    daily = latest_val - baseline_val
-    if daily < 0:
-        return None
-
-    return daily
+    return total
 
 def unwrap_cumulative(values: Iterable[Optional[float]]) -> List[Optional[float]]:
     """
@@ -134,39 +170,71 @@ def unwrap_cumulative(values: Iterable[Optional[float]]) -> List[Optional[float]
 
     return out
 
-
 def _compute_daily_temp_range(
-    air_temp: Any, fallback_time: Any,
+    air_temp: Any,
+    fallback_time: Any,
+    maxT_6hr: Optional[Any] = None,
+    minT_6hr: Optional[Any] = None,
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    Compute (max_temp, min_temp) as the max and min air temperature
-    since local midnight (using get_midnight(), which is assumed to be UTC).
+    Compute (daily_max, daily_min) since local midnight.
+
+    - air_temp: hourly temps (list-like, may contain None).
+    - maxT_6hr: optional 6-hr max temps (same grid, may be None).
+    - minT_6hr: optional 6-hr min temps (same grid, may be None).
+
+    If maxT_6hr/minT_6hr are None, the result is based only on air_temp.
     """
-    entries: List[Tuple[datetime, float]] = []
 
     if air_temp is None:
         return None, None
 
-    for t, temp in zip(fallback_time, air_temp):
-        if temp is None:
-            continue
-        dt = datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        entries.append((dt, temp))
+    mn = get_midnight()  # timezone-aware UTC datetime
 
-    if not entries:
+    def _iter_since_midnight(values: Any):
+        if values is None:
+            return
+        for t, v in zip(fallback_time, values):
+            if v is None:
+                continue
+            dt = datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            if dt >= mn:
+                yield v
+
+    # Hourly-based max/min since midnight
+    hourly_vals = list(_iter_since_midnight(air_temp))
+    if not hourly_vals:
         return None, None
 
-    entries.sort(key=lambda item: item[0])
+    hourly_max: Optional[float] = max(hourly_vals)
+    hourly_min: Optional[float] = min(hourly_vals)
 
-    mn = get_midnight()
+    # Optional 6-hr maxima/minima
+    max6_vals = list(_iter_since_midnight(maxT_6hr)) if maxT_6hr is not None else []
+    min6_vals = list(_iter_since_midnight(minT_6hr)) if minT_6hr is not None else []
 
-    temps_since_midnight = [val for dt, val in entries if dt >= mn]
+    max6: Optional[float] = max(max6_vals) if max6_vals else None
+    min6: Optional[float] = min(min6_vals) if min6_vals else None
 
-    if not temps_since_midnight:
+    def _pick_max(a: Optional[float], b: Optional[float]) -> Optional[float]:
+        if a is None:
+            return b
+        if b is None:
+            return a
+        return max(a, b)
+
+    def _pick_min(a: Optional[float], b: Optional[float]) -> Optional[float]:
+        if a is None:
+            return b
+        if b is None:
+            return a
+        return min(a, b)
+
+    daily_max = _pick_max(hourly_max, max6)
+    daily_min = _pick_min(hourly_min, min6)
+
+    if daily_max is None or daily_min is None:
         return None, None
-
-    daily_max = max(temps_since_midnight)
-    daily_min = min(temps_since_midnight)
 
     return daily_max, daily_min
 
@@ -208,8 +276,10 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
         "waterYearIN": wy_in,
     }
 
-def format_asos_latest(station: Dict[str, Any]) -> Dict[str, Any]:
-    observations = station.get("OBSERVATIONS", {})
+def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+
+    ### temperature info from station_a ###
+    observations = station_a.get("OBSERVATIONS", {})
 
     air_temp = observations.get("air_temp_set_1")
     maxT_6hr = observations.get("air_temp_high_6_hour_set_1")
@@ -218,61 +288,66 @@ def format_asos_latest(station: Dict[str, Any]) -> Dict[str, Any]:
     date_time = observations.get("date_time")
     dt_latest = date_time[-1]
 
-    daily_maxT, daily_minT = _compute_daily_temp_range(air_temp, date_time)
+    daily_maxT, daily_minT = _compute_daily_temp_range(air_temp, date_time, maxT_6hr, minT_6hr)
 
     maxF = c_to_f(daily_maxT)
     minF = c_to_f(daily_minT)
     currentF = c_to_f(air_temp[-1])
 
+    ### precip info from station_b ###
+    hourly = [
+        entry.get("total")
+        for entry in station_b.get("OBSERVATIONS", {}).get("precipitation", [])
+    ]
+
+    date_time_b = [
+        entry.get("last_report")
+        for entry in station_b.get("OBSERVATIONS", {}).get("precipitation", [])
+    ]
+
+    daily_accum = _compute_precip_from_hourly(hourly, date_time_b, "daily")
+
+    daily_in = mm_to_in(daily_accum)
+
     return {
-            "stid": station.get("STID"),
-            "name": station.get("NAME"),
-            "elevation": station.get("ELEVATION"),
-            "latitude": station.get("LATITUDE"),
-            "longitude": station.get("LONGITUDE"),
+            "stid": station_a.get("STID"),
+            "name": station_a.get("NAME"),
+            "elevation": station_a.get("ELEVATION"),
+            "latitude": station_a.get("LATITUDE"),
+            "longitude": station_a.get("LONGITUDE"),
             "dateTime": dt_latest,
             "airTempF": currentF,
             "dailyMaxF": maxF,
             "dailyMinF": minF,
+            "dailyAccumIN": daily_in,
         }
 
-def format_asos_precip(station: Dict[str, Any]) -> Dict[str, Any]:
-    observations = station.get("OBSERVATIONS", {})
-
-    ### LEFT OFF HERE. COMPUTE DAILY AND WY FROM HOURLY. ###
-    
-    totals = [
-        entry.get("total")
-        for entry in station.get("OBSERVATIONS", {}).get("precipitation", [])
-    ]
-
-    date_time = [
-        entry.get("last_report")
-        for entry in station.get("OBSERVATIONS", {}).get("precipitation", [])
-    ]
-
-    
-
-    # hour_accum = mm_to_in(precip_one_hour[-1])
-
-    return {
-        # "precip_accum_one_hour": hour_accum,
-        # "daily_accum": daily_accum,
-        # "wy_accum": wy_accum,
-    }  
-
-
 def build_station_payload(
-    stations: List[Dict[str, Any]],
+    stations_a: List[Dict[str, Any]],
+    stations_b: Optional[List[Dict[str, Any]]] = None,
     *,
     type: str
 ) -> List[Dict[str, Any]]:
     """Transform a list of station records into a simplified structure."""
     if type is None:
         raise ValueError("Type is required.")
-    if type == "ASOS_latest":
-        return [format_asos_latest(station) for station in stations]
-    if type == "ASOS_precip":
-        return [format_asos_precip(station) for station in stations]
+
     if type == "HADS":
-        return [format_hads(station) for station in stations]
+        return [format_hads(station) for station in stations_a]
+    
+    if type == "ASOS":
+        if stations_b is None:
+            raise ValueError("stations_b is required when type='ASOS'.")
+
+        if len(stations_a) != len(stations_b):
+            raise ValueError(
+                f"stations_a and stations_b must be same length for ASOS "
+                f"(got {len(stations_a)} and {len(stations_b)})"
+            )
+
+        return [
+            format_asos(station_a, station_b)
+            for station_a, station_b in zip(stations_a, stations_b)
+        ]
+
+    raise ValueError(f"Unknown type: {type!r}")

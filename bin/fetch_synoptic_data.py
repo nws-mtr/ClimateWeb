@@ -44,11 +44,10 @@ def main() -> None:
     stationsA = responseA.get("STATION", [])
     stationsB = responseB.get("STATION", [])
     stationsC = responseC.get("STATION", [])
-    payloadA = build_station_payload(stationsA, type="ASOS_latest")
-    payloadB = build_station_payload(stationsB, type="ASOS_precip")
-    payloadC = build_station_payload(stationsC, type="HADS")
+    payloadA = build_station_payload(stationsA, stationsB, type="ASOS")
+    payloadB = build_station_payload(stationsC, type="HADS")
 
-    combined = payloadA + payloadC
+    combined = payloadA + payloadB
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(combined, indent=2), encoding="utf-8")
