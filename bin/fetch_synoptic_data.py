@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import json
+import yaml
 import sys
 from pathlib import Path
+from typing import List
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -10,27 +12,18 @@ if str(ROOT_DIR) not in sys.path:
 from lib.synoptic_client import SynopticClient, SynopticAPIError
 from src.data_processor import build_station_payload
 
-ASOS = [
-    "KCCR",
-    "KSNS",
-    "KSFO",
-    "KSJC",
-    "KMRY",
-]
+def load_station_ids(config_path: str = "config/stations.yaml") -> dict:
+    path = Path(config_path)
+    with path.open("r") as f:
+        data = yaml.safe_load(f)
+    return data.get("stations", {})
 
-HADS = [
-    "OAMC1",
-    "SARC1",
-    "SFOC1",
-    "RWCC1",
-    "PKFC1",
-    "SRTC1",
-    "HDZC1",
-    "CTOC1",
-]
+stations = load_station_ids()
+
+ASOS: List[str] = stations.get("ASOS", [])
+HADS: List[str] = stations.get("HADS", [])
 
 OUTPUT_PATH = Path("synoptic_stations.json")
-
 
 def main() -> None:
     client = SynopticClient()
