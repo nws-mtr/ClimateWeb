@@ -5,6 +5,7 @@ stations:
     - KSFO
     - KSJC
     - KMRY
+    - KO69
   HADS:
     - OAMC1
     - SARC1
@@ -15,7 +16,32 @@ stations:
     - HDZC1
     - CTOC1
   COOP:
-    - XXXXX
+    - TRPC1
+    - LIVC1
+    - RICC1
+    - MDJC1
+    - KENC1
+    - BISC1
+    - KICC1
+    - NSHC1
+    - CLTC1
+    - HOLC1
+    - PNMC1
+    - SRSC1
+    - MHAC1
+    - GILC1
+    - BNLC1
+    - SCRC1
+    - WVIC1
+    - STSC1
+    - SMAC1
+    - CLVC1
+    - ANGC1
+    - HLDC1
+    - GRNC1
+    - FORC1
+    - FETC1
 
 # Optional backup stations to try when XMACIS returns errors for the primary ID.
-xmacis_fallbacks: {}
+xmacis_fallbacks:
+  KO69: PETC1
