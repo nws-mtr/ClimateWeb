@@ -2,8 +2,13 @@
 """Build payloads from Synoptic and XMACIS responses."""
 
 import json
+import sys
 from pathlib import Path
 from typing import List, Dict, Any
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from bin.fetch_synoptic_data import fetch_synoptic_data
 from bin.fetch_xmacis_precip import fetch_xmacis_precip
