@@ -16,3 +16,6 @@ stations:
     - CTOC1
   COOP:
     - XXXXX
+
+# Optional backup stations to try when XMACIS returns errors for the primary ID.
+xmacis_fallbacks: {}

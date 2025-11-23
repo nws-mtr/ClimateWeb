@@ -18,7 +18,12 @@ ClimateWeb is an open data workflow developed by the National Weather Service to
 
 ## Configuration
 
-Station identifiers live in `config/stations.yaml`. Update the `ASOS` and `HADS` lists to control which stations are retrieved from Synoptic and used when requesting precipitation normals from XMACIS.
+Station identifiers live in `config/stations.yaml`. Update the `ASOS` and `HADS` lists to control which stations are retrieved from Synoptic and used when requesting precipitation normals from XMACIS. If XMACIS returns an error for a primary station (for example, "no data available"), you can define a backup station to try instead by adding an entry under `xmacis_fallbacks`, e.g.
+
+```yaml
+xmacis_fallbacks:
+  KO69: KXYZ  # Try KXYZ if KO69 has no XMACIS data
+```
 
 ## Usage
 
