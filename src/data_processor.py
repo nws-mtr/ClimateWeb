@@ -286,11 +286,12 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
         precip_accum, date_time)
     
     wy_accum = unwrap_cumulative(precip_accum)
-    wy_in = mm_to_in(wy_accum[-1])
     daily_in = mm_to_in(daily_accum)
 
     stid = station.get("STID", {})
     wy_in, norm_in, pct = _get_precip_from_acis(stid)
+
+    wy_in = mm_to_in(wy_accum[-1]) # Comment out to use ACIS Precip Accum
 
     return {
         "stid": station.get("STID"),
