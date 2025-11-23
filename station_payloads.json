@@ -1,16 +1,19 @@
 {
-  "stations": [
+  "data": [
     {
       "stid": "KCCR",
       "name": "Concord, Buchanan Field",
       "elevation": "23.0",
       "latitude": "37.99167",
       "longitude": "-122.05194",
-      "dateTime": "2025-11-23T19:04:00Z",
-      "airTempF": 48,
+      "dateTime": "2025-11-23T20:53:00Z",
+      "airTempF": 49,
       "dailyMaxF": 49,
       "dailyMinF": 43,
-      "dailyAccumIN": 0.0
+      "dailyAccumIN": 0.0,
+      "waterYearIN": 1.72,
+      "waterYearNormIN": 1.84,
+      "percentOfNorm": 93
     },
     {
       "stid": "KMRY",
@@ -18,11 +21,14 @@
       "elevation": "167.0",
       "latitude": "36.59047",
       "longitude": "-121.84875",
-      "dateTime": "2025-11-23T18:54:00Z",
-      "airTempF": 53,
-      "dailyMaxF": 54,
+      "dateTime": "2025-11-23T20:54:00Z",
+      "airTempF": 58,
+      "dailyMaxF": 58,
       "dailyMinF": 46,
-      "dailyAccumIN": 0.0
+      "dailyAccumIN": 0.0,
+      "waterYearIN": 4.4,
+      "waterYearNormIN": 1.88,
+      "percentOfNorm": 234
     },
     {
       "stid": "KSFO",
@@ -30,11 +36,14 @@
       "elevation": "10.0",
       "latitude": "37.61961",
       "longitude": "-122.36558",
-      "dateTime": "2025-11-23T19:12:00Z",
-      "airTempF": 54,
-      "dailyMaxF": 54,
+      "dateTime": "2025-11-23T20:56:00Z",
+      "airTempF": 56,
+      "dailyMaxF": 56,
       "dailyMinF": 47,
-      "dailyAccumIN": 0.0
+      "dailyAccumIN": 0.0,
+      "waterYearIN": 4.46,
+      "waterYearNormIN": 2.16,
+      "percentOfNorm": 206
     },
     {
       "stid": "KSJC",
@@ -42,11 +51,14 @@
       "elevation": "59.0",
       "latitude": "37.35917",
       "longitude": "-121.92417",
-      "dateTime": "2025-11-23T18:53:00Z",
-      "airTempF": 51,
-      "dailyMaxF": 52,
+      "dateTime": "2025-11-23T20:53:00Z",
+      "airTempF": 57,
+      "dailyMaxF": 57,
       "dailyMinF": 49,
-      "dailyAccumIN": 0.0
+      "dailyAccumIN": 0.0,
+      "waterYearIN": 4.08,
+      "waterYearNormIN": 1.47,
+      "percentOfNorm": 277
     },
     {
       "stid": "KSNS",
@@ -54,11 +66,14 @@
       "elevation": "82.0",
       "latitude": "36.66361",
       "longitude": "-121.60806",
-      "dateTime": "2025-11-23T18:53:00Z",
-      "airTempF": 58,
-      "dailyMaxF": 58,
+      "dateTime": "2025-11-23T20:53:00Z",
+      "airTempF": 62,
+      "dailyMaxF": 62,
       "dailyMinF": 43,
-      "dailyAccumIN": 0.0
+      "dailyAccumIN": 0.0,
+      "waterYearIN": 3.7,
+      "waterYearNormIN": 1.48,
+      "percentOfNorm": 250
     },
     {
       "stid": "CTOC1",
@@ -66,12 +81,14 @@
       "elevation": "327.0",
       "latitude": "36.990860",
       "longitude": "-121.804880",
-      "dateTime": "2025-11-23T19:27:00Z",
-      "airTempF": 64,
-      "dailyMaxF": 64,
+      "dateTime": "2025-11-23T20:27:00Z",
+      "airTempF": 67,
+      "dailyMaxF": 67,
       "dailyMinF": 42,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 8.61
+      "waterYearIN": 9999,
+      "waterYearNormIN": 9999,
+      "percentOfNorm": 9999
     },
     {
       "stid": "HDZC1",
@@ -79,12 +96,14 @@
       "elevation": "3733.0",
       "latitude": "36.382540",
       "longitude": "-120.855820",
-      "dateTime": "2025-11-23T19:07:00Z",
-      "airTempF": 60,
-      "dailyMaxF": 60,
+      "dateTime": "2025-11-23T20:07:00Z",
+      "airTempF": 61,
+      "dailyMaxF": 61,
       "dailyMinF": 48,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 4.67
+      "waterYearIN": 9999,
+      "waterYearNormIN": 9999,
+      "percentOfNorm": 9999
     },
     {
       "stid": "PKFC1",
@@ -92,12 +111,14 @@
       "elevation": "1525.0",
       "latitude": "35.898310",
       "longitude": "-120.433290",
-      "dateTime": "2025-11-23T18:55:00Z",
-      "airTempF": 60,
-      "dailyMaxF": 60,
+      "dateTime": "2025-11-23T20:55:00Z",
+      "airTempF": 66,
+      "dailyMaxF": 66,
       "dailyMinF": 37,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 4.41
+      "waterYearIN": 9999,
+      "waterYearNormIN": 9999,
+      "percentOfNorm": 9999
     },
     {
       "stid": "SRTC1",
@@ -105,12 +126,14 @@
       "elevation": "5036.0",
       "latitude": "36.348110",
       "longitude": "-120.600110",
-      "dateTime": "2025-11-23T18:57:00Z",
-      "airTempF": 53,
-      "dailyMaxF": 53,
+      "dateTime": "2025-11-23T20:57:00Z",
+      "airTempF": 54,
+      "dailyMaxF": 55,
       "dailyMinF": 44,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 4.65
+      "waterYearIN": 9999,
+      "waterYearNormIN": 9999,
+      "percentOfNorm": 9999
     },
     {
       "stid": "SFOC1",
@@ -118,12 +141,14 @@
       "elevation": "150.0",
       "latitude": "37.77056",
       "longitude": "-122.42694",
-      "dateTime": "2025-11-23T18:43:00Z",
-      "airTempF": 55,
-      "dailyMaxF": 55,
+      "dateTime": "2025-11-23T20:43:00Z",
+      "airTempF": 57,
+      "dailyMaxF": 57,
       "dailyMinF": 52,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 3.53
+      "waterYearIN": 3.53,
+      "waterYearNormIN": 2.73,
+      "percentOfNorm": 129
     },
     {
       "stid": "SARC1",
@@ -131,12 +156,14 @@
       "elevation": "120.0",
       "latitude": "37.99938",
       "longitude": "-122.53223",
-      "dateTime": "2025-11-23T19:00:00Z",
-      "airTempF": 53,
-      "dailyMaxF": 53,
+      "dateTime": "2025-11-23T20:00:00Z",
+      "airTempF": 54,
+      "dailyMaxF": 54,
       "dailyMinF": 44,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 6.39
+      "waterYearIN": 6.39,
+      "waterYearNormIN": 3.8,
+      "percentOfNorm": 168
     },
     {
       "stid": "RWCC1",
@@ -144,12 +171,14 @@
       "elevation": "10.0",
       "latitude": "37.48780",
       "longitude": "-122.21390",
-      "dateTime": "2025-11-23T19:05:00Z",
-      "airTempF": 52,
-      "dailyMaxF": 52,
+      "dateTime": "2025-11-23T20:05:00Z",
+      "airTempF": 57,
+      "dailyMaxF": 57,
       "dailyMinF": 43,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 3.82
+      "waterYearIN": 3.85,
+      "waterYearNormIN": 2.09,
+      "percentOfNorm": 184
     },
     {
       "stid": "OAMC1",
@@ -157,16 +186,14 @@
       "elevation": "30.0",
       "latitude": "37.79810",
       "longitude": "-122.26343",
-      "dateTime": "2025-11-23T19:00:00Z",
-      "airTempF": 56,
-      "dailyMaxF": 56,
+      "dateTime": "2025-11-23T20:00:00Z",
+      "airTempF": 58,
+      "dailyMaxF": 58,
       "dailyMinF": 51,
       "dailyAccumIN": 0.0,
-      "waterYearIN": 3.94
+      "waterYearIN": 3.94,
+      "waterYearNormIN": 2.83,
+      "percentOfNorm": 139
     }
-  ],
-  "precipSummary": [
-    "1.72",
-    "1.84"
   ]
 }

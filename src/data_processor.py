@@ -28,13 +28,30 @@ def get_midnight():
 
     return midnight
 
-def _get_precip_from_acis(stid: Dict[str, Any]) -> Dict[str, Any]:
-    acis = fetch_xmacis_precip(stid)
+def _get_precip_from_acis(stid: str) -> Tuple[float, float, int]:
+    acis = fetch_xmacis_precip(stid)  # expected: acis[0] = wy_in, acis[1] = norm_in
+    print(stid)
 
-    wy_in = acis[0]
-    norm_in = acis[1]
+    def _safe_val(x: Any) -> float:
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return 9999
 
-    return wy_in, norm_in
+    # Extract raw values defensively
+    wy_raw  = acis[0] if len(acis) > 0 else None
+    norm_raw = acis[1] if len(acis) > 1 else None
+
+    wy_in   = _safe_val(wy_raw)
+    norm_in = _safe_val(norm_raw)
+
+    # Compute percent-of-normal with 9999 guard
+    if wy_in == 9999 or norm_in == 9999 or norm_in == 0:
+        pct = 9999
+    else:
+        pct = int((wy_in / norm_in) * 100)
+
+    return wy_in, norm_in, pct
 
 def _compute_daily_from_cumulative(
     cumulative_obs: Any, fallback_time: Any
@@ -272,8 +289,8 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
     wy_in = mm_to_in(wy_accum[-1])
     daily_in = mm_to_in(daily_accum)
 
-    stid = station.get("STATION", {}).get("STID", [])
-    wy_in, norm_in = _get_precip_from_acis(stid)
+    stid = station.get("STID", {})
+    wy_in, norm_in, pct = _get_precip_from_acis(stid)
 
     return {
         "stid": station.get("STID"),
@@ -288,6 +305,7 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
         "dailyAccumIN": daily_in,
         "waterYearIN": wy_in,
         "waterYearNormIN": norm_in,
+        "percentOfNorm": pct,
     }
 
 def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -324,8 +342,8 @@ def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) 
     daily_in = mm_to_in(daily_accum)
 
     if station_b is not None:
-        stid = station_b.get("STATION", {}).get("STID", [])
-        wy_in, norm_in = _get_precip_from_acis(stid)
+        stid = station_b.get("STID", [])
+        wy_in, norm_in, pct = _get_precip_from_acis(stid)
 
     return {
             "stid": station_a.get("STID"),
@@ -340,6 +358,7 @@ def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) 
             "dailyAccumIN": daily_in,
             "waterYearIN": wy_in,
             "waterYearNormIN": norm_in,
+            "percentOfNorm": pct,
         }
 
 def build_station_payload(

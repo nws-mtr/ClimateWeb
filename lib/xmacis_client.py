@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Dict
 from urllib.error import HTTPError, URLError
-
+from json import JSONDecodeError
 
 class XMACISAPIError(Exception):
     """Custom error for XMACIS API issues."""
@@ -28,21 +28,11 @@ class XMACISClient:
         *,
         start: str,
         end: str,
-    ) -> Dict[str, Any]:
-        """Fetch accumulated and normal precipitation from XMACIS.
-
-        Args:
-            station: Station identifier compatible with ACIS (e.g., "KSFO").
-            start: Start date in ``YYYY-MM-DD`` format.
-            end: End date in ``YYYY-MM-DD`` format.
-
-        Returns:
-            Parsed JSON response from the API.
-
-        Raises:
-            XMACISAPIError: When the API request fails or returns an error.
-        """
-
+        ) -> Dict[str, Any]:
+        """Fetch accumulated and normal precipitation from XMACIS."""
+        if not isinstance(station, str) or not station.strip():
+            raise XMACISAPIError(f"Invalid station passed to XMACIS: {station!r}")
+        
         payload = {
             "sid": station,
             "sdate": start,
@@ -76,22 +66,40 @@ class XMACISClient:
 
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                body = response.read().decode("utf-8", errors="replace")
+
                 if response.status != 200:
                     raise XMACISAPIError(
-                        f"Request failed with status {response.status}: {response.read()}"
+                        f"Request failed with status {response.status} for station={station}, "
+                        f"sdate={start}, edate={end}. Body snippet: {body[:300]!r}"
                     )
-                parsed = json.loads(response.read().decode("utf-8"))
+
+                if not body.strip():
+                    raise XMACISAPIError(
+                        f"Empty response body from XMACIS for station={station}, "
+                        f"sdate={start}, edate={end}"
+                    )
+
+                try:
+                    parsed = json.loads(body)
+                except JSONDecodeError as e:
+                    raise XMACISAPIError(
+                        f"Non-JSON response from XMACIS for station={station}, "
+                        f"sdate={start}, edate={end}. Body snippet: {body[:300]!r}"
+                    ) from e
+
         except HTTPError as exc:
             body = exc.read()
             details = body.decode("utf-8", errors="ignore") if body else exc.reason
             raise XMACISAPIError(
-                f"HTTP error {exc.code} during API call: {details or 'no response body'}"
+                f"HTTP error {exc.code} during API call for station={station}: "
+                f"{details or 'no response body'}"
             )
         except URLError as exc:
-            raise XMACISAPIError(f"Network error during API call: {exc}")
+            raise XMACISAPIError(f"Network error during API call for station={station}: {exc}")
 
         if "error" in parsed:
-            raise XMACISAPIError(f"API error: {parsed['error']}")
+            raise XMACISAPIError(f"API error for station={station}: {parsed['error']}")
 
         return parsed
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import yaml
 import sys
 from pathlib import Path
@@ -38,21 +37,3 @@ def fetch_synoptic_data() -> Tuple[List[dict], List[dict], List[dict]]:
 
     return stationsA, stationsB, stationsC
 
-
-def main() -> None:
-    stationsA, stationsB, stationsC = fetch_synoptic_data()
-
-    payloadA = build_station_payload(stationsA, stationsB, type="ASOS")
-    payloadB = build_station_payload(stationsC, type="HADS")
-
-    combined = payloadA + payloadB
-
-    print(
-        "Fetched synoptic data for "
-        f"{len(stationsA)} ASOS and {len(stationsC)} HADS stations."
-    )
-    print(f"Built payloads for {len(combined)} stations.")
-
-
-if __name__ == "__main__":
-    main()

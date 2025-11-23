@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Fetch accumulated and normal precipitation from the XMACIS API."""
-
-import json
 import sys
 import yaml
 from datetime import datetime, timezone
@@ -18,17 +16,18 @@ from lib.xmacis_client import (
     start_of_water_year_iso,
 )
 
-def load_station_ids(config_path: str = "config/stations.yaml") -> dict:
-    path = Path(config_path)
-    with path.open("r") as f:
-        data = yaml.safe_load(f)
-    return data.get("stations", {})
+def load_station_ids(path: str = "config/stations.yaml") -> Dict[str, List[str]]:
+    p = Path(path)
+    with p.open("r") as f:
+        data = yaml.safe_load(f) or {}
+    stations = data.get("stations", {})
+    # Ensure we always get lists of strings
+    return {k: list(v or []) for k, v in stations.items()}
 
 stations = load_station_ids()
 
 ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
-
 
 def fetch_xmacis_precip(station: Dict[str, Any]) -> Dict[str, Any]:
     start = start_of_water_year_iso()
@@ -41,11 +40,3 @@ def fetch_xmacis_precip(station: Dict[str, Any]) -> Dict[str, Any]:
         raise SystemExit(f"Failed to fetch precipitation data: {exc}")
 
     return response.get("smry", [])
-
-
-def main() -> None:
-    vals = fetch_xmacis_precip()
-    print(f"Fetched {len(vals)} precipitation summary entries from XMACIS.")
-
-if __name__ == "__main__":
-    main()

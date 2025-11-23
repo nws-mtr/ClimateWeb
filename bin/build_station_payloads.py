@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Build payloads from Synoptic and XMACIS responses."""
-
 import json
 import sys
 from pathlib import Path
@@ -11,7 +10,6 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from bin.fetch_synoptic_data import fetch_synoptic_data
-from bin.fetch_xmacis_precip import fetch_xmacis_precip
 from src.data_processor import build_station_payload
 
 OUTPUT_PATH = Path("station_payloads.json")
@@ -25,9 +23,8 @@ def build_payloads() -> Dict[str, Any]:
     combined: List[Dict[str, Any]] = payloadA + payloadB
 
     return {
-        "stations": combined,
+        "data": combined,
     }
-
 
 def main() -> None:
     payloads = build_payloads()
@@ -39,7 +36,6 @@ def main() -> None:
         f"Saved station payload and precipitation summary "
         f"to {OUTPUT_PATH}"
     )
-
 
 if __name__ == "__main__":
     main()
