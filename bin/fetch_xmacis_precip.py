@@ -16,7 +16,6 @@ from lib.xmacis_client import (
     start_of_water_year_iso,
 )
 
-
 def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit("Usage: fetch_xmacis_precip.py <STATION_ID>")

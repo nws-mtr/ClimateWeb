@@ -1,0 +1,18 @@
+stations:
+  ASOS:
+    - KCCR
+    - KSNS
+    - KSFO
+    - KSJC
+    - KMRY
+  HADS:
+    - OAMC1
+    - SARC1
+    - SFOC1
+    - RWCC1
+    - PKFC1
+    - SRTC1
+    - HDZC1
+    - CTOC1
+  COOP:
+    - XXXXX
