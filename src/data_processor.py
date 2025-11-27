@@ -296,7 +296,7 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "stid": station.get("STID"),
         "name": station.get("NAME"),
-        "elevation": station.get("ELEVATION"),
+        "elevationFT": station.get("ELEVATION"),
         "latitude": station.get("LATITUDE"),
         "longitude": station.get("LONGITUDE"),
         "dateTime": dt_latest,
@@ -349,7 +349,7 @@ def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) 
     return {
             "stid": station_a.get("STID"),
             "name": station_a.get("NAME"),
-            "elevation": station_a.get("ELEVATION"),
+            "elevationFT": station_a.get("ELEVATION"),
             "latitude": station_a.get("LATITUDE"),
             "longitude": station_a.get("LONGITUDE"),
             "dateTime": dt_latest,
