@@ -74,7 +74,7 @@
     .lede {
       margin: 0;
       color: var(--muted);
-      max-width: 780px;
+      max-width: 800px;
     }
 
     .controls {
@@ -229,6 +229,60 @@
       gap: 4px;
     }
 
+    .current-temp {
+
+      display: inline-flex;
+
+      align-items: baseline;
+
+      gap: 6px;
+
+      font-weight: 700;
+
+      color: var(--ink);
+
+      padding: 6px 10px;
+
+      border: 1px solid #e3e8f0;
+
+      border-radius: 10px;
+
+      background: #f7f9fd;
+
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+
+      white-space: nowrap;
+
+    }
+
+
+
+    .current-label {
+
+      text-transform: uppercase;
+
+      letter-spacing: 0.06em;
+
+      font-size: 12px;
+
+      color: var(--muted);
+
+      font-weight: 700;
+
+    }
+
+
+
+    .current-value {
+
+      font-size: 18px;
+
+      letter-spacing: -0.2px;
+
+    }
+
+
+
     .station-name {
       margin: 0;
       font-size: 18px;
@@ -297,9 +351,24 @@
       letter-spacing: -0.2px;
     }
 
-    .metric-sub {
-      font-size: 13px;
-      color: var(--muted);
+    .metric.status-below {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: #d9e6ff;
+    }
+
+    .metric.status-near {
+      background: rgba(14, 165, 233, 0.12);
+      border-color: #cdeefa;
+    }
+
+    .metric.status-above {
+      background: rgba(22, 163, 74, 0.12);
+      border-color: #d5f3df;
+    }
+
+    .metric.status-missing {
+      background: rgba(148, 163, 184, 0.12);
+      border-color: #e2e8f0;
     }
 
     .notes {
@@ -398,25 +467,27 @@
     <header>
       <div class="title-block">
         <p class="eyebrow">Daily Climate Summary</p>
-        <h1>Climate Snapshot Dashboard</h1>
-        <p class="lede">Current observations, precipitation progress, and quick-glance normals for each reporting station.</p>
+        <h1>Regional Observation Area Roundup</h1>
+        <p class="lede">Daily high, low, and rainfall <b>since midnight</b> and water year (Oct 1 - Sep 30) rainfall stats. All values update hourly.</p>
+        <p class="lede"><strong>This page is experimental and automated. Data are preliminary and subject to additional quality control.</strong></p>
       </div>
-      <div class="pill" title="Values of 9999 in the feed are shown as missing (—).">% of normal keyed by color</div>
     </header>
 
     <section class="controls" aria-label="Filters and sorting">
       <div class="control-group">
-        <label for="search">Search stations</label>
+        <label for="search">Search</label>
         <input type="search" id="search" name="search" placeholder="Type a station ID or name" autocomplete="off">
       </div>
       <div class="control-group">
         <label for="sortBy">Sort by</label>
         <select id="sortBy" name="sortBy">
           <option value="stid">Station ID</option>
-          <option value="name">Station name</option>
-          <option value="percentOfNorm">Percent of normal</option>
+          <option value="name">Station Name</option>
+          <option value="percentOfNorm">Percent of Normal</option>
+          <option value="dailyAccumIN">Rainfall Since Midnight</option>
+          <option value="airTempF">Current Temperature</option>
         </select>
-        <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">Asc ^</button>
+        <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">^</button>
       </div>
     </section>
 
@@ -534,49 +605,45 @@
         card.innerHTML = `
           <div class="card-header" title="Station ${station.stid}">
             <div class="card-title">
-              <span class="station-id">${station.stid || '—'}</span>
-              <h3 class="station-name">${station.name || '—'}</h3>
+              <span class="station-id">${station.stid || '-'}</span>
+              <h3 class="station-name">${station.name || '-'}</h3>
             </div>
-            <span class="badge ${percent.className}" title="Percent of normal precipitation">${formatPercent(station.percentOfNorm)}</span>
+            <div class="current-temp" title="Current air temperature">
+              <span class="current-label">Now:</span>
+              <span class="current-value">${formatNumber(station.airTempF, 0, '°F')}</span>
+            </div>
           </div>
           <div class="meta">
-            <span title="Elevation in feet">Elev ${formatNumber(station.elevationFT, 0, ' ft')}</span>
-            <span title="Latitude / Longitude">Lat/Lon ${formatNumber(station.latitude, 2, ' deg')}, ${formatNumber(station.longitude, 2, ' deg')}</span>
-            <span title="Local observation time">Obs ${formatDate(station.dateTime)}</span>
+            <span title="Local observation time">Updated ${formatDate(station.dateTime)}</span>
           </div>
           <div class="metrics">
             <div class="metric">
-              <div class="metric-label">Air Temp</div>
-              <div class="metric-value">${formatNumber(station.airTempF, 0, ' degF')}</div>
-              <div class="metric-sub">Current</div>
+              <div class="metric-label">High</div>
+              <div class="metric-value">${formatNumber(station.dailyMaxF, 0, '°F')}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Daily Max</div>
-              <div class="metric-value">${formatNumber(station.dailyMaxF, 0, ' degF')}</div>
-              <div class="metric-sub">High today</div>
+              <div class="metric-label">Low</div>
+              <div class="metric-value">${formatNumber(station.dailyMinF, 0, '°F')}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Daily Min</div>
-              <div class="metric-value">${formatNumber(station.dailyMinF, 0, ' degF')}</div>
-              <div class="metric-sub">Low today</div>
+              <div class="metric-label">Rainfall</div>
+              <div class="metric-value">${formatNumber(station.dailyAccumIN, 2, '"')}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Daily Precip</div>
-              <div class="metric-value">${formatNumber(station.dailyAccumIN, 2, ' in')}</div>
-              <div class="metric-sub">Last 24 hrs</div>
+              <div class="metric-label">Since Oct 1</div>
+              <div class="metric-value">${formatNumber(station.waterYearIN, 2, '"')}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Water Year</div>
-              <div class="metric-value">${formatNumber(station.waterYearIN, 2, ' in')}</div>
-              <div class="metric-sub">Since Oct 1</div>
+              <div class="metric-label">Normal</div>
+              <div class="metric-value">${formatNumber(station.waterYearNormIN, 2, '"')}</div>
             </div>
-            <div class="metric">
-              <div class="metric-label">Water Yr Normal</div>
-              <div class="metric-value">${formatNumber(station.waterYearNormIN, 2, ' in')}</div>
-              <div class="metric-sub">Climatology</div>
+            <div class="metric ${percent.className}">
+              <div class="metric-label">Percent of Normal</div>
+              <div class="metric-value">${formatPercent(station.percentOfNorm)}</div>
             </div>
           </div>
         `;
+
         cardsEl.appendChild(card);
       });
     }
@@ -642,7 +709,7 @@
 
     function toggleSortDirection() {
       state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-      sortDirectionBtn.textContent = state.sortDir === 'asc' ? 'Asc ^' : 'Desc v';
+      sortDirectionBtn.textContent = state.sortDir === 'asc' ? '^' : 'v';
       sortDirectionBtn.setAttribute('aria-label', `Sort ${state.sortDir === 'asc' ? 'ascending' : 'descending'}`);
       applyFilters();
     }
@@ -665,4 +732,6 @@
   </script>
 </body>
 </html>
+
+
 

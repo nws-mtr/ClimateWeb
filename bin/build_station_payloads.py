@@ -12,7 +12,7 @@ if str(ROOT_DIR) not in sys.path:
 from bin.fetch_synoptic_data import fetch_synoptic_data
 from src.data_processor import build_station_payload
 
-OUTPUT_PATH = Path("station_payloads.json")
+OUTPUT_PATH = Path("web/station_payloads.json")
 
 def build_payloads() -> Dict[str, Any]:
     stationsA, stationsB, stationsC = fetch_synoptic_data()
