@@ -79,10 +79,10 @@
 
     .controls {
       background: var(--panel);
-      border: 1px solid var(--border);
+      border: 2px solid var(--border);
       box-shadow: var(--shadow);
       border-radius: 14px;
-      padding: 16px;
+      padding: 12px;
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
@@ -230,63 +230,37 @@
     }
 
     .current-temp {
-
       display: inline-flex;
-
       align-items: baseline;
-
       gap: 6px;
-
       font-weight: 700;
-
       color: var(--ink);
-
       padding: 6px 10px;
-
       border: 1px solid #e3e8f0;
-
       border-radius: 10px;
-
       background: #f7f9fd;
-
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-
       white-space: nowrap;
-
     }
-
-
 
     .current-label {
-
       text-transform: uppercase;
-
       letter-spacing: 0.06em;
-
-      font-size: 12px;
-
+      font-size: 16px;
       color: var(--muted);
-
-      font-weight: 700;
-
+      font-weight: 600;
     }
-
-
 
     .current-value {
-
       font-size: 18px;
-
       letter-spacing: -0.2px;
-
+      font-weight: 600;
     }
-
-
 
     .station-name {
       margin: 0;
       font-size: 18px;
-      font-weight: 700;
+      font-weight: 650;
       letter-spacing: -0.2px;
     }
 
@@ -375,6 +349,17 @@
       letter-spacing: 0.06em;
       color: var(--muted);
       font-weight: 700;
+    }
+
+    .metric-sub-label {
+      display: grid;
+      justify-content: right;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: -24px;
+      margin-right: -1px;
     }
 
     .metric-value {
@@ -513,13 +498,13 @@
       <div class="control-group">
         <label for="sortBy">Sort by</label>
         <select id="sortBy" name="sortBy">
-          <option value="stid">Station ID</option>
           <option value="name">Station Name</option>
           <option value="percentOfNorm">Percent of Normal</option>
-          <option value="dailyAccumIN">Rainfall Since Midnight</option>
+          <option value="dailyAccumIN">Precip Since Midnight</option>
           <option value="airTempF">Current Temperature</option>
+          <option value="latitude">Latitude</option>
         </select>
-        <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">^</button>
+        <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">Ascending</button>
       </div>
     </section>
 
@@ -670,14 +655,17 @@
           <div class="metrics">
             <div class="metric">
               <div class="metric-label">High</div>
+              <div class="metric-sub-label">(since midnight)</div>
               <div class="metric-value">${formatNumber(station.dailyMaxF, 0, '°F')}</div>
             </div>
             <div class="metric">
               <div class="metric-label">Low</div>
+              <div class="metric-sub-label">(since midnight)</div>
               <div class="metric-value">${formatNumber(station.dailyMinF, 0, '°F')}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Rainfall</div>
+              <div class="metric-label">Precip</div>
+              <div class="metric-sub-label">(since midnight)</div>
               <div class="metric-value">${formatNumber(station.dailyAccumIN, 2, '"')}</div>
             </div>
             <div class="metric">
@@ -763,7 +751,7 @@
 
     function toggleSortDirection() {
       state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-      sortDirectionBtn.textContent = state.sortDir === 'asc' ? '^' : 'v';
+      sortDirectionBtn.textContent = state.sortDir === 'asc' ? 'Ascending' : 'Descending';
       sortDirectionBtn.setAttribute('aria-label', `Sort ${state.sortDir === 'asc' ? 'ascending' : 'descending'}`);
       applyFilters();
     }
