@@ -168,7 +168,7 @@
 
     .status-below {
       background: rgba(59, 130, 246, 0.12);
-      color: #1d4ed8;
+      color: #f6703b;
     }
 
     .status-near {
@@ -301,9 +301,9 @@
     .meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px 18px;
+      gap: 10px 18px;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 12px;
       position: relative;
       z-index: 1;
     }
@@ -312,7 +312,8 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 10px;
+      margin-top: -8px;
+      padding: 5px 8px;
       background: #f6f8fb;
       border-radius: 10px;
       border: 1px solid #edf1f7;
@@ -321,15 +322,46 @@
     .metrics {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
+      gap: 6px;
       position: relative;
       z-index: 1;
+    }
+
+    .card-footer {
+      margin-top: -3px;
+      margin-bottom: -6px;
+      display: flex;
+      justify-content: left;
+    }
+
+    .map-link {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      padding: 5px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f7f9fd;
+      transition: color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .map-link:hover {
+      color: #1d4ed8;
+      box-shadow: 0 8px 20px rgba(45, 108, 223, 0.18);
+      transform: translateY(-1px);
+    }
+
+    .map-link.disabled {
+      color: var(--muted);
+      pointer-events: none;
+      opacity: 0.6;
     }
 
     .metric {
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid #edf0f5;
+      border: 2px solid #edf0f5;
       background: #fbfcfe;
       display: flex;
       flex-direction: column;
@@ -347,28 +379,28 @@
 
     .metric-value {
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: -0.2px;
     }
 
     .metric.status-below {
-      background: rgba(59, 130, 246, 0.12);
-      border-color: #d9e6ff;
+      background: rgba(246, 112, 59, 0.122);
+      border-color: #edf0f5;
     }
 
     .metric.status-near {
       background: rgba(14, 165, 233, 0.12);
-      border-color: #cdeefa;
+      border-color: #edf0f5;
     }
 
     .metric.status-above {
       background: rgba(22, 163, 74, 0.12);
-      border-color: #d5f3df;
+      border-color: #edf0f5;
     }
 
     .metric.status-missing {
-      background: rgba(148, 163, 184, 0.12);
-      border-color: #e2e8f0;
+      background: rgba(121, 121, 121, 0.164);
+      border-color: #edf0f5;
     }
 
     .notes {
@@ -566,6 +598,15 @@
       });
     }
 
+    function mapLink(station) {
+      const lat = Number(station.latitude);
+      const lon = Number(station.longitude);
+      if (isMissing(station.latitude) || isMissing(station.longitude) || Number.isNaN(lat) || Number.isNaN(lon)) {
+        return { href: '#', disabled: true };
+      }
+      return { href: `https://www.google.com/maps?q=${lat},${lon}`, disabled: false };
+    }
+
     function percentTone(value) {
       if (isMissing(value) || Number.isNaN(Number(value))) {
         return { className: 'status-missing', label: 'No normal data' };
@@ -574,6 +615,14 @@
       if (num < 75) return { className: 'status-below', label: 'Below normal' };
       if (num > 125) return { className: 'status-above', label: 'Above normal' };
       return { className: 'status-near', label: 'Near normal' };
+    }
+
+    function normalTone(value) {
+      if (isMissing(value) || Number.isNaN(Number(value))) {
+        return { className: 'status-missing', label: 'No normal data' };
+      } else {
+        return { label: 'Valid data' };
+      }
     }
 
     function setStatus(message) {
@@ -600,9 +649,11 @@
 
       stations.forEach((station) => {
         const percent = percentTone(station.percentOfNorm);
+        const normal = normalTone(station.waterYearNormIN);
+        const map = mapLink(station);
         const card = document.createElement('article');
         card.className = 'station-card';
-        card.innerHTML = `
+                card.innerHTML = `
           <div class="card-header" title="Station ${station.stid}">
             <div class="card-title">
               <span class="station-id">${station.stid || '-'}</span>
@@ -633,7 +684,7 @@
               <div class="metric-label">Since Oct 1</div>
               <div class="metric-value">${formatNumber(station.waterYearIN, 2, '"')}</div>
             </div>
-            <div class="metric">
+            <div class="metric ${normal.className}">
               <div class="metric-label">Normal</div>
               <div class="metric-value">${formatNumber(station.waterYearNormIN, 2, '"')}</div>
             </div>
@@ -641,6 +692,9 @@
               <div class="metric-label">Percent of Normal</div>
               <div class="metric-value">${formatPercent(station.percentOfNorm)}</div>
             </div>
+          </div>
+          <div class="card-footer">
+            <a class="map-link${map.disabled ? ' disabled' : ''}" href="${map.href}" target="_blank" rel="noopener noreferrer"${map.disabled ? ' aria-disabled="true"' : ''}>Where is this station?</a>
           </div>
         `;
 
