@@ -1,20 +1,37 @@
-# ClimateWeb
+﻿# ClimateWeb
 
-ClimateWeb is an open data workflow developed by the National Weather Service to make station-level climate information easy to reuse by the public. The repository packages recent observations from Synoptic with precipitation normals from XMACIS into a single, lightweight JSON file that can be embedded in web experiences or downstream applications.
+ClimateWeb is an open data workflow developed by the National Weather Service to make station-level climate information easy to reuse by the public. It combines recent Synoptic observations with XMACIS precipitation normals into a lightweight JSON file that can be served directly to browsers or other applications and visualized with the included static dashboard.
 
-## Project layout
+## Data sources
 
-- `bin/` — command-line helpers for fetching station data and writing payloads.
-- `lib/` — minimal clients for the external Synoptic and XMACIS APIs.
-- `src/` — utilities that transform raw responses into compact station dictionaries.
-- `config/stations.yaml` — list of ASOS and HADS station identifiers to query.
-- `tests/` — pytest suite that exercises the data processing pipeline.
+- Synoptic API for current and recent observations (temperature, hourly precipitation, and timeseries for configured stations).
+- XMACIS for water-year precipitation totals and long-term normals, with optional station fallbacks when the primary site is unavailable.
+
+## Repository layout
+
+- `bin/` - entry points for building payloads and fetching upstream data (`build_station_payloads.py`, `fetch_synoptic_data.py`, `fetch_xmacis_precip.py`).
+- `lib/` - thin API clients for Synoptic and XMACIS.
+- `src/` - data shaping logic (`data_processor.py`) that computes temps and precipitation metrics.
+- `config/stations.yaml` - station lists and optional XMACIS fallback mappings.
+- `web/` - static dashboard and the generated `station_payloads.json`.
+- `tests/` - pytest coverage for the processing pipeline and XMACIS helper.
 
 ## Requirements
 
-- Python 3.9+ (timezone backports are pulled in automatically for older runtimes).
-- Dependencies listed in `requirements.txt` (`numpy`, `pytest`, and timezone backports where needed).
-- A Synoptic API token available in the environment as `SYNOPTIC_KEY` when running the fetch scripts.
+- Python 3.9+
+- Dependencies in `requirements.txt`
+- A Synoptic API token exported as `SYNOPTIC_KEY` to call the upstream API
+
+### Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # or: .\.venv\Scripts\Activate.ps1 on Windows
+pip install -r requirements.txt
+
+# Required for Synoptic requests
+export SYNOPTIC_KEY="your-token"  # or: $env:SYNOPTIC_KEY="your-token" in PowerShell
+```
 
 ## Configuration
 
@@ -25,30 +42,70 @@ xmacis_fallbacks:
   KO69: KXYZ  # Try KXYZ if KO69 has no XMACIS data
 ```
 
-## Usage
+## Build the payload
 
-1. Install dependencies (ideally inside a virtual environment):
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Export your Synoptic API token:
-   ```bash
-   export SYNOPTIC_KEY="<your-token>"
-   ```
-3. Build the combined payload:
-   ```bash
-   python bin/build_station_payloads.py
-   ```
+Run the builder from the repo root:
 
-`bin/build_station_payloads.py` fetches ASOS and HADS data from Synoptic, computes temperature ranges and precipitation summaries in `src/data_processor.py`, and writes the merged results to `station_payloads.json` at the repository root. The resulting JSON is small enough to serve directly to browsers or to feed another public API.
+```bash
+python bin/build_station_payloads.py
+```
+
+The script fetches:
+
+- Latest ASOS temps plus 6-hour maxima/minima from Synoptic
+- Hourly ASOS precipitation from Synoptic
+- HADS timeseries for temperature and precipitation since the start of the water year
+- Water-year precipitation totals and normals from XMACIS (with optional fallbacks)
+
+`src/data_processor.py` combines these inputs into simplified station dictionaries and writes them to `web/station_payloads.json` (creating the `web/` folder if it does not exist).
+
+### Payload contents
+
+`web/station_payloads.json` has the shape:
+
+```json
+{
+  "data": [
+    {
+      "stid": "KSFO",
+      "name": "San Francisco Intl",
+      "latitude": 37.62,
+      "longitude": -122.38,
+      "elevationFT": 13,
+      "dateTime": "2024-11-30T15:00:00Z",
+      "airTempF": 58,
+      "dailyMaxF": 61,
+      "dailyMinF": 54,
+      "dailyAccumIN": 0.12,
+      "waterYearIN": 3.45,
+      "waterYearNormIN": 5.67,
+      "percentOfNorm": 61
+    }
+  ]
+}
+```
+
+Temperatures are in Fahrenheit and precipitation values are in inches. A value of `9999` indicates missing upstream data.
 
 ### How data is processed
 
-- **Synoptic observations** — `bin/fetch_synoptic_data.py` retrieves the latest temperature readings, hourly precipitation totals, and longer timeseries for configured stations. The responses are parsed and validated in `lib/synoptic_client.py`.
-- **XMACIS precipitation normals** — `bin/fetch_xmacis_precip.py` requests water-year precipitation totals and normals from XMACIS for each station.
-- **Payload shaping** — `src/data_processor.py` converts the raw inputs into simplified dictionaries, computing daily temperature extremes, daily precipitation, water-year accumulation, and percent-of-normal metrics.
+- Synoptic observations: `bin/fetch_synoptic_data.py` retrieves temperature observations, hourly precip intervals, and timeseries for configured stations. Responses are parsed and validated in `lib/synoptic_client.py`.
+- XMACIS precipitation normals: `bin/fetch_xmacis_precip.py` requests water-year precipitation totals and normals for each station, optionally retrying with a fallback ID.
+- Payload shaping: `src/data_processor.py` converts the raw inputs into simplified dictionaries, computing daily temperature extremes (since local midnight), daily precipitation, water-year accumulation, and percent-of-normal metrics.
 
 Each `station_payloads.json` entry contains the station ID, name, location, elevation, and computed climate fields tailored for public consumption.
+
+## View the dashboard
+
+Serve the `web/` directory with any static file server so the browser can fetch `station_payloads.json`:
+
+```bash
+cd web
+python -m http.server 8000
+# then open http://localhost:8000/ in your browser
+```
+
+The dashboard reads the generated payload, supports search and sorting, and can print a text report. Regenerate `web/station_payloads.json` to refresh the data.
 
 ## Testing
 
@@ -58,4 +115,4 @@ Run the test suite with:
 pytest
 ```
 
-The tests ensure the formatting helpers continue to handle edge cases in observation times, precipitation baselines, and temperature extremes.
+The tests cover the data processing helpers, precipitation normalization, and the XMACIS fallback handling.
