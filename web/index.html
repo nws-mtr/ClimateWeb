@@ -506,6 +506,9 @@
         </select>
         <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">Ascending</button>
       </div>
+      <div class="control-group">
+        <button id="printReport" type="button">Print text report</button>
+      </div>
     </section>
 
     <div class="status-line" id="status" aria-live="polite"></div>
@@ -536,7 +539,8 @@
     const state = {
       stations: [],
       sortKey: 'stid',
-      sortDir: 'asc'
+      sortDir: 'asc',
+      filteredStations: []
     };
 
     const cardsEl = document.getElementById('cards');
@@ -548,6 +552,7 @@
     const sortDirectionBtn = document.getElementById('sortDirection');
     const notesToggle = document.getElementById('notesToggle');
     const notesSection = document.getElementById('notes');
+    const printButton = document.getElementById('printReport');
 
     // Flag missing data values and standardize placeholders.
     function isMissing(value) {
@@ -725,6 +730,7 @@
       const direction = state.sortDir === 'asc' ? 1 : -1;
       filtered.sort((a, b) => direction * compare(a, b, state.sortKey));
 
+      state.filteredStations = filtered;
       renderCards(filtered);
       setStatus(filtered.length ? `Showing ${filtered.length} station${filtered.length === 1 ? '' : 's'}.` : 'No matching stations.');
     }
@@ -762,6 +768,81 @@
       notesToggle.setAttribute('aria-expanded', (!isCollapsed).toString());
     }
 
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char] || char));
+    }
+
+    function generateReportText(stations) {
+      const created = new Date();
+      const columns = [
+        'Site',
+        'High',
+        'Low',
+        'Precip',
+        'Water Year',
+        'Normal',
+        '% of Normal'
+      ];
+
+      const header = [
+        'Climate Daily Text Report',
+        'National Weather Service San Francisco CA',
+        `${created.toLocaleString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZoneName: 'short'
+        })}`,
+        'Daily observations are since 0800 GMT',
+        `Stations included: ${stations.length}`,
+        ''
+      ];
+
+      const rows = stations.map((station) => ([
+        `${station.stid}`,
+        formatNumber(station.dailyMaxF, 0),
+        formatNumber(station.dailyMinF, 0),
+        formatNumber(station.dailyAccumIN, 2),
+        formatNumber(station.waterYearIN, 2),
+        formatNumber(station.waterYearNormIN, 2),
+        formatPercent(station.percentOfNorm)
+      ].join('........')));
+
+      const headerLine = columns.join('      ');
+      const divider = '-'.repeat(headerLine.length);
+      return [...header, headerLine, divider, ...rows].join('\n');
+    }
+
+    function openPrintReport() {
+      const stationsForReport = state.filteredStations.length ? state.filteredStations : state.stations;
+      if (!stationsForReport.length) {
+        alert('No station data to print yet. Please load data first.');
+        return;
+      }
+
+      const reportText = generateReportText(stationsForReport);
+      const reportWindow = window.open('', '_blank');
+
+      if (!reportWindow) {
+        alert('Unable to open print view. Please allow pop-ups for this site.');
+        return;
+      }
+
+      reportWindow.document.title = 'Climate Daily Text Report';
+      reportWindow.document.body.innerHTML = `<pre style="white-space: pre-wrap; font: 14px/1.5 monospace; margin: 16px;">${escapeHtml(reportText)}</pre>`;
+      reportWindow.focus();
+      reportWindow.print();
+    }
+
     searchInput.addEventListener('input', applyFilters);
     sortBy.addEventListener('change', (event) => {
       state.sortKey = event.target.value;
@@ -769,6 +850,7 @@
     });
     sortDirectionBtn.addEventListener('click', toggleSortDirection);
     notesToggle.addEventListener('click', toggleNotes);
+    printButton.addEventListener('click', openPrintReport);
 
     loadData();
   </script>
