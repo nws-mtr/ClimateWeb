@@ -1,6 +1,6 @@
 ﻿# ClimateWeb
 
-ClimateWeb is an open data workflow developed by the National Weather Service to make station-level climate information easy to reuse by the public. It combines recent Synoptic observations with XMACIS precipitation normals into a lightweight JSON file that can be served directly to browsers or other applications and visualized with the included static dashboard.
+ClimateWeb is an open data workflow developed by the National Weather Service to make station-level climate information easy to reuse by the public. It combines recent observations with precipitation normals into a lightweight JSON file that can be served directly to browsers or other applications and visualized with the included static dashboard.
 
 ## Data sources
 
