@@ -9,7 +9,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from lib.synoptic_client import SynopticClient, SynopticAPIError
-from src.data_processor import build_station_payload
+
 
 def load_station_ids(config_path: str = "config/stations.yaml") -> dict:
     path = Path(config_path)
@@ -22,8 +22,9 @@ stations = load_station_ids()
 ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
 
-def fetch_synoptic_data() -> Tuple[List[dict], List[dict], List[dict]]:
-    client = SynopticClient()
+
+def fetch_synoptic_data(current_time=None) -> Tuple[List[dict], List[dict], List[dict]]:
+    client = SynopticClient(now=current_time)
     try:
         responseA = client.fetch_latest(ASOS)
         responseB = client.fetch_precip(ASOS)
@@ -36,4 +37,3 @@ def fetch_synoptic_data() -> Tuple[List[dict], List[dict], List[dict]]:
     stationsC = responseC.get("STATION", [])
 
     return stationsA, stationsB, stationsC
-

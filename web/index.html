@@ -507,7 +507,9 @@
         <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">Ascending</button>
       </div>
       <div class="control-group">
-        <button id="printReport" type="button">Print text report</button>
+        <label for="printReport">Print report</label>
+        <button id="printReport" type="button">Today so far</button>
+        <button id="yesterdayReport" type="button">Yesterday</button>
       </div>
     </section>
 
@@ -529,8 +531,8 @@
       </div>
       <div class="notes-body" id="notesBody">
         <p>This page summarizes daily climate observations per station, including temperature extremes and precipitation progress for the current water year.</p>
-        <p><strong>Percent of normal</strong> compares the current water year precipitation to the long-term normal. Values below 75% are flagged as below normal, 75-125% as near normal, and above 125% as above normal.</p>
-        <p>A value of <strong>9999</strong> in the source data indicates missing information; this dashboard displays those as an em dash (—).</p>
+        <p><strong>Percent of normal</strong> compares the current water year precipitation to the normal. Values below 75% are flagged as below normal, 75-125% as near normal, and above 125% as above normal.</p>
+        <p>Missing data is indicated by a dash (—).</p>
       </div>
     </section>
   </div>
@@ -538,6 +540,9 @@
   <script>
     const state = {
       stations: [],
+      meta: {},
+      yesterdayStations: [],
+      yesterdayMeta: {},
       sortKey: 'stid',
       sortDir: 'asc',
       filteredStations: []
@@ -553,8 +558,8 @@
     const notesToggle = document.getElementById('notesToggle');
     const notesSection = document.getElementById('notes');
     const printButton = document.getElementById('printReport');
+    const yesterdayButton = document.getElementById('yesterdayReport');
 
-    // Flag missing data values and standardize placeholders.
     function isMissing(value) {
       return value === 9999 || value === '9999' || value === null || value === undefined;
     }
@@ -643,7 +648,7 @@
         const map = mapLink(station);
         const card = document.createElement('article');
         card.className = 'station-card';
-                card.innerHTML = `
+        card.innerHTML = `
           <div class="card-header" title="Station ${station.stid}">
             <div class="card-title">
               <span class="station-id">${station.stid || '-'}</span>
@@ -716,9 +721,9 @@
       return numA === numB ? 0 : numA > numB ? 1 : -1;
     }
 
-    function applyFilters() {
+    function getFilteredStations(sourceStations) {
       const query = searchInput.value.trim().toLowerCase();
-      let filtered = [...state.stations];
+      let filtered = [...sourceStations];
 
       if (query) {
         filtered = filtered.filter((station) =>
@@ -729,7 +734,11 @@
 
       const direction = state.sortDir === 'asc' ? 1 : -1;
       filtered.sort((a, b) => direction * compare(a, b, state.sortKey));
+      return filtered;
+    }
 
+    function applyFilters() {
+      const filtered = getFilteredStations(state.stations);
       state.filteredStations = filtered;
       renderCards(filtered);
       setStatus(filtered.length ? `Showing ${filtered.length} station${filtered.length === 1 ? '' : 's'}.` : 'No matching stations.');
@@ -740,18 +749,38 @@
       clearError();
 
       try {
-        const response = await fetch('./station_payloads.json', { cache: 'no-cache' });
+        const response = await fetch('./station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const json = await response.json();
         if (!json || !Array.isArray(json.data)) {
           throw new Error('Data array missing in payload.');
         }
         state.stations = json.data;
+        state.meta = json.meta || {};
         applyFilters();
         setStatus(`Loaded ${state.stations.length} station${state.stations.length === 1 ? '' : 's'}.`);
       } catch (err) {
         showError(`Unable to load climate data. ${err.message}`);
         setStatus('');
+      }
+    }
+
+    async function loadYesterdayData() {
+      if (state.yesterdayStations.length) return state.yesterdayStations;
+
+      try {
+        const response = await fetch('./station_payloads_yesterday.json', { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const json = await response.json();
+        if (!json || !Array.isArray(json.data)) {
+          throw new Error('Data array missing in yesterday payload.');
+        }
+        state.yesterdayStations = json.data;
+        state.yesterdayMeta = json.meta || {};
+        return state.yesterdayStations;
+      } catch (err) {
+        alert(`Unable to load yesterday's report data. ${err.message}`);
+        return null;
       }
     }
 
@@ -778,8 +807,20 @@
       }[char] || char));
     }
 
-    function generateReportText(stations) {
-      const created = new Date();
+    function generateReportText(stations, meta = {}, contextLabel = '') {
+      const fallbackNow = new Date();
+      const generatedAt = meta.generatedAt ? new Date(meta.generatedAt) : fallbackNow;
+      const daySource = meta.climateDayStart || meta.climateDayLabel;
+      const reportDayRaw = daySource ? new Date(daySource) : generatedAt;
+      const reportDay = Number.isNaN(reportDayRaw.getTime()) ? fallbackNow : reportDayRaw;
+
+      const reportDateLabel = reportDay.toLocaleString(undefined, {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const headingContext = contextLabel ? ` (${contextLabel})` : '';
+
       const columns = [
         'Site',
         'High',
@@ -791,9 +832,9 @@
       ];
 
       const header = [
-        'Climate Daily Text Report',
+        `Daily Climate Report ${reportDateLabel}${headingContext}`,
         'National Weather Service San Francisco CA',
-        `${created.toLocaleString(undefined, {
+        generatedAt.toLocaleString(undefined, {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -801,7 +842,7 @@
           hour: 'numeric',
           minute: '2-digit',
           timeZoneName: 'short'
-        })}`,
+        }),
         'Daily observations are since 0800 GMT',
         `Stations included: ${stations.length}`,
         ''
@@ -819,17 +860,12 @@
 
       const headerLine = columns.join('      ');
       const divider = '-'.repeat(headerLine.length);
-      return [...header, headerLine, divider, ...rows].join('\n');
+      const title = `Daily_Climate_Report_${reportDay.getFullYear()}_${String(reportDay.getMonth() + 1).padStart(2, '0')}_${String(reportDay.getDate()).padStart(2, '0')}`;
+
+      return { text: [...header, headerLine, divider, ...rows].join('\n'), title };
     }
 
-    function openPrintReport() {
-      const stationsForReport = state.filteredStations.length ? state.filteredStations : state.stations;
-      if (!stationsForReport.length) {
-        alert('No station data to print yet. Please load data first.');
-        return;
-      }
-
-      const reportText = generateReportText(stationsForReport);
+    function openReportWindow(report) {
       const reportWindow = window.open('', '_blank');
 
       if (!reportWindow) {
@@ -837,10 +873,37 @@
         return;
       }
 
-      reportWindow.document.title = 'Climate Daily Text Report';
-      reportWindow.document.body.innerHTML = `<pre style="white-space: pre-wrap; font: 14px/1.5 monospace; margin: 16px;">${escapeHtml(reportText)}</pre>`;
+      reportWindow.document.title = report.title;
+      reportWindow.document.body.innerHTML = `<pre style="white-space: pre-wrap; font: 14px/1.5 monospace; margin: 16px;">${escapeHtml(report.text)}</pre>`;
       reportWindow.focus();
       reportWindow.print();
+    }
+
+    function openPrintReport() {
+      const stationsForReport = getFilteredStations(state.stations);
+      if (!stationsForReport.length) {
+        alert('No station data to print yet. Please load data first.');
+        return;
+      }
+
+      const report = generateReportText(stationsForReport, state.meta, 'Today');
+      openReportWindow(report);
+    }
+
+    async function openYesterdayReport() {
+      const yesterdayData = await loadYesterdayData();
+      if (!yesterdayData || !yesterdayData.length) {
+        return;
+      }
+
+      const stationsForReport = getFilteredStations(yesterdayData);
+      if (!stationsForReport.length) {
+        alert('No yesterday station data to print.');
+        return;
+      }
+
+      const report = generateReportText(stationsForReport, state.yesterdayMeta, 'Yesterday');
+      openReportWindow(report);
     }
 
     searchInput.addEventListener('input', applyFilters);
@@ -851,6 +914,7 @@
     sortDirectionBtn.addEventListener('click', toggleSortDirection);
     notesToggle.addEventListener('click', toggleNotes);
     printButton.addEventListener('click', openPrintReport);
+    yesterdayButton.addEventListener('click', () => { void openYesterdayReport(); });
 
     loadData();
   </script>

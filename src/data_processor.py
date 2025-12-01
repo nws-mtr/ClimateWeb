@@ -9,18 +9,29 @@ try:
 except ImportError:  # pragma: no cover - fallback for older Python
     from backports.zoneinfo import ZoneInfo  # type: ignore
 
+
 def mm_to_in(mm):
     if mm is None:
         return None
     return np.round(mm / 25.4, decimals=2)
+
 
 def c_to_f(c):
     if c is None:
         return None
     return int(round((c * 9/5) + 32))
 
-def get_midnight():
-    now = datetime.now(timezone.utc)
+
+def _parse_dt(dt_str: str) -> datetime:
+    return datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
+def get_midnight(now: datetime | None = None) -> datetime:
+    if now is None:
+        now = datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
     midnight = now.replace(hour=8, minute=0, second=0, microsecond=0)
 
     if now < midnight:
@@ -28,8 +39,16 @@ def get_midnight():
 
     return midnight
 
-def _get_precip_from_acis(stid: str) -> Tuple[float, float, int]:
-    acis = fetch_xmacis_precip(stid)  # expected: acis[0] = wy_in, acis[1] = norm_in
+
+def climate_day_window(now: datetime, days_ago: int = 0) -> Tuple[datetime, datetime]:
+    reference = now - timedelta(days=days_ago)
+    start = get_midnight(reference)
+    end = start + timedelta(days=1)
+    return start, end
+
+
+def _get_precip_from_acis(stid: str, now: datetime) -> Tuple[float, float, int]:
+    acis = fetch_xmacis_precip(stid, now=now)  # expected: acis[0] = wy_in, acis[1] = norm_in
     print(stid)
 
     def _safe_val(x: Any) -> float:
@@ -38,14 +57,12 @@ def _get_precip_from_acis(stid: str) -> Tuple[float, float, int]:
         except (TypeError, ValueError):
             return 9999
 
-    # Extract raw values defensively
     wy_raw  = acis[0] if len(acis) > 0 else None
     norm_raw = acis[1] if len(acis) > 1 else None
 
     wy_in   = _safe_val(wy_raw)
     norm_in = _safe_val(norm_raw)
 
-    # Compute percent-of-normal with 9999 guard
     if wy_in == 9999 or norm_in == 9999 or norm_in == 0:
         pct = 9999
     else:
@@ -53,106 +70,84 @@ def _get_precip_from_acis(stid: str) -> Tuple[float, float, int]:
 
     return wy_in, norm_in, pct
 
+
 def _compute_daily_from_cumulative(
-    cumulative_obs: Any, fallback_time: Any
-) -> Tuple[Optional[float], Optional[float]]:
-    """Compute (latest cumulative value, daily increment since local midnight)."""
-    entries: List[Tuple[datetime, float]] = []
-        
+    cumulative_obs: Any,
+    fallback_time: Any,
+    day_start: datetime,
+    day_end: datetime,
+) -> Optional[float]:
+    entries: List[Tuple[str, Optional[float]]] = []
+
     if cumulative_obs is None:
-        for t in fallback_time:
-            entries.append((t, None))
+        entries = [(t, None) for t in fallback_time or []]
     else:
-        for t, obs in zip(fallback_time, cumulative_obs):
-            entries.append((t, obs))
+        entries = list(zip(fallback_time or [], cumulative_obs))
 
     if not entries:
-        return None, None
-
-    entries.sort(key=lambda item: item[0])
-    latest_dt, latest_val = entries[-1]
-    mn = get_midnight()
-
-    baseline_val: Optional[float] = None
-    for dt_, val in reversed(entries):
-        dt = datetime.strptime(dt_, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        if dt <= mn:
-            baseline_val = val
-            break
-
-    if baseline_val is None:
         return None
 
-    daily = latest_val - baseline_val
+    def _latest_before(target: datetime) -> Optional[float]:
+        for dt_str, val in reversed(entries):
+            dt = _parse_dt(dt_str)
+            if dt <= target:
+                return val
+        return None
+
+    latest_val = _latest_before(day_end)
+    baseline_val = _latest_before(day_start)
+
+    if latest_val is None or baseline_val is None:
+        return None
+
+    try:
+        daily = float(latest_val) - float(baseline_val)
+    except (TypeError, ValueError):
+        return None
+
     if daily < 0:
         return None
 
     return daily
 
+
 def _compute_precip_from_hourly(
     hourly: Any,
     fallback_time: Any,
-    period: str = "daily",  # "daily" or "wateryear"
+    *,
+    day_start: datetime,
+    day_end: datetime,
+    period: str = "daily",
 ) -> Optional[float]:
-    """Compute precip increment with low-value filtering.
-
-    Args:
-        hourly: Sequence of hourly amounts (not cumulative), or None.
-        fallback_time: Corresponding timestamps (ISO UTC strings).
-        period: "daily" => sum since local midnight;
-                "wateryear" => sum over entire period.
-
-    Logic:
-      - Interpret `hourly` as hourly amounts.
-      - Any obs < 0.254 is treated as 0.0.
-      - For "daily", only sum values with timestamps >= local midnight.
-      - For "wateryear", sum all values in the series.
-    """
     if period not in ("daily", "wateryear"):
         raise ValueError(f"period must be 'daily' or 'wateryear', got {period!r}")
 
     entries: List[Tuple[str, Optional[float]]] = []
 
     if hourly is None:
-        # No data; keep timestamps but vals are None
-        for t in fallback_time:
-            entries.append((t, None))
+        entries = [(t, None) for t in fallback_time or []]
     else:
-        for t, obs in zip(fallback_time, hourly):
-            entries.append((t, obs))
+        entries = list(zip(fallback_time or [], hourly))
 
     if not entries:
         return None
 
-    # Sort by timestamp (assumed ISO strings like "YYYY-MM-DDTHH:MM:SSZ")
     entries.sort(key=lambda item: item[0])
-
-    # Latest non-None hourly value (kept here in case you want it later)
-    latest_val: Optional[float] = None
-    for dt_str, val in reversed(entries):
-        if val is not None:
-            latest_val = val
-            break
-
-    # Only needed for daily mode
-    mn = get_midnight() if period == "daily" else None
 
     total = 0.0
     has_any = False
 
     for dt_str, val in entries:
-        # Parse to aware UTC datetime
-        dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        dt = _parse_dt(dt_str)
 
         if val is None:
             continue
 
-        if period == "daily" and dt < mn:
-            # Skip pre-midnight in daily mode
+        if period == "daily" and (dt < day_start or dt >= day_end):
             continue
 
         has_any = True
-        v = val if val >= 0.254 else 0.0  # filter small amounts
+        v = val if val >= 0.254 else 0.0
         if v > 0.0:
             total += v
 
@@ -161,84 +156,62 @@ def _compute_precip_from_hourly(
 
     return total
 
-def unwrap_cumulative(values: Iterable[Optional[float]]) -> List[Optional[float]]:
-    """
-    Convert a possibly-resetting cumulative series into a monotonic one,
-    assuming the true accumulation starts at 0 at the first value.
 
-    Rules:
-      - First non-None value => treated as 0 accumulated.
-      - Only positive deltas (current > previous) add to the total.
-      - Zero or negative deltas contribute 0 (plateaus/resets).
-      - Output is a monotonic, non-decreasing series starting at 0.
-    """
+def unwrap_cumulative(values: Iterable[Optional[float]]) -> List[Optional[float]]:
     out: List[Optional[float]] = []
     prev: Optional[float] = None
     total: float = 0.0
 
     for v in values:
         if v is None:
-            # Preserve missing values; do not advance the state.
             out.append(None)
             continue
 
         if prev is None:
-            # First valid value initializes the baseline; no increment yet.
             prev = v
             out.append(0.0)
             continue
 
         if v > prev:
             total += (v - prev)
-        # else: v <= prev -> reset or flat; no change in total
 
         out.append(total)
         prev = v
 
     return out
 
+
 def _compute_daily_temp_range(
     air_temp: Any,
     fallback_time: Any,
     maxT_6hr: Optional[Any] = None,
     minT_6hr: Optional[Any] = None,
+    *,
+    day_start: datetime,
+    day_end: datetime,
 ) -> Tuple[Optional[float], Optional[float]]:
-    """
-    Compute (daily_max, daily_min) since local midnight.
-
-    - air_temp: hourly temps (list-like, may contain None).
-    - maxT_6hr: optional 6-hr max temps (same grid, may be None).
-    - minT_6hr: optional 6-hr min temps (same grid, may be None).
-
-    If maxT_6hr/minT_6hr are None, the result is based only on air_temp.
-    """
-
     if air_temp is None:
         return None, None
 
-    mn = get_midnight()  # timezone-aware UTC datetime
-
-    def _iter_since_midnight(values: Any):
+    def _iter_in_window(values: Any):
         if values is None:
             return
-        for t, v in zip(fallback_time, values):
+        for t, v in zip(fallback_time or [], values):
             if v is None:
                 continue
-            dt = datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-            if dt >= mn:
+            dt = _parse_dt(t)
+            if dt >= day_start and dt < day_end:
                 yield v
 
-    # Hourly-based max/min since midnight
-    hourly_vals = list(_iter_since_midnight(air_temp))
+    hourly_vals = list(_iter_in_window(air_temp))
     if not hourly_vals:
         return None, None
 
     hourly_max: Optional[float] = max(hourly_vals)
     hourly_min: Optional[float] = min(hourly_vals)
 
-    # Optional 6-hr maxima/minima
-    max6_vals = list(_iter_since_midnight(maxT_6hr)) if maxT_6hr is not None else []
-    min6_vals = list(_iter_since_midnight(minT_6hr)) if minT_6hr is not None else []
+    max6_vals = list(_iter_in_window(maxT_6hr)) if maxT_6hr is not None else []
+    min6_vals = list(_iter_in_window(minT_6hr)) if minT_6hr is not None else []
 
     max6: Optional[float] = max(max6_vals) if max6_vals else None
     min6: Optional[float] = min(min6_vals) if min6_vals else None
@@ -265,33 +238,46 @@ def _compute_daily_temp_range(
 
     return daily_max, daily_min
 
-def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
+
+def format_hads(
+    station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime
+) -> Dict[str, Any]:
     observations = station.get("OBSERVATIONS", {})
-    
+
     air_temp = observations.get("air_temp_set_1")
     precip_accum = observations.get("precip_accum_set_1")
-    
-    date_time = observations.get("date_time")
-    dt_latest = date_time[-1]
 
-    daily_maxT, daily_minT = _compute_daily_temp_range(air_temp, date_time)
+    date_time = observations.get("date_time") or []
+    dt_latest = date_time[-1] if date_time else None
+
+    daily_maxT, daily_minT = _compute_daily_temp_range(
+        air_temp,
+        date_time,
+        day_start=day_start,
+        day_end=day_end,
+    )
 
     maxF = c_to_f(daily_maxT)
     minF = c_to_f(daily_minT)
-    currentF = c_to_f(air_temp[-1])
+    currentF = c_to_f(air_temp[-1]) if air_temp else None
 
-    wy_accum: Optional[float] = None
-    daily_accum: Optional[float] = None
     daily_accum = _compute_daily_from_cumulative(
-        precip_accum, date_time)
-    
-    wy_accum = unwrap_cumulative(precip_accum)
+        precip_accum,
+        date_time,
+        day_start,
+        day_end,
+    )
+
+    wy_accum = unwrap_cumulative(precip_accum or [])
+    wy_latest = wy_accum[-1] if wy_accum else None
+    wy_in_station = mm_to_in(wy_latest)
     daily_in = mm_to_in(daily_accum)
 
     stid = station.get("STID", {})
-    wy_in, norm_in, pct = _get_precip_from_acis(stid)
+    wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
 
-    wy_in = mm_to_in(wy_accum[-1]) # Comment out to use ACIS Precip Accum
+    if wy_in_station is not None:
+        wy_in = wy_in_station
 
     return {
         "stid": station.get("STID"),
@@ -309,42 +295,52 @@ def format_hads(station: Dict[str, Any]) -> Dict[str, Any]:
         "percentOfNorm": pct,
     }
 
-def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
-    ### temperature info from station_a ###
+def format_asos(
+    station_a: Dict[str, Any],
+    station_b: Optional[Dict[str, Any]],
+    *,
+    day_start: datetime,
+    day_end: datetime,
+    now: datetime,
+) -> Dict[str, Any]:
     observations = station_a.get("OBSERVATIONS", {})
 
     air_temp = observations.get("air_temp_set_1")
     maxT_6hr = observations.get("air_temp_high_6_hour_set_1")
     minT_6hr = observations.get("air_temp_low_6_hour_set_1")
 
-    date_time = observations.get("date_time")
-    dt_latest = date_time[-1]
+    date_time = observations.get("date_time") or []
+    dt_latest = date_time[-1] if date_time else None
 
-    daily_maxT, daily_minT = _compute_daily_temp_range(air_temp, date_time, maxT_6hr, minT_6hr)
+    daily_maxT, daily_minT = _compute_daily_temp_range(
+        air_temp,
+        date_time,
+        maxT_6hr,
+        minT_6hr,
+        day_start=day_start,
+        day_end=day_end,
+    )
 
     maxF = c_to_f(daily_maxT)
     minF = c_to_f(daily_minT)
-    currentF = c_to_f(air_temp[-1])
+    currentF = c_to_f(air_temp[-1]) if air_temp else None
 
-    ### precip info from station_b ###
-    hourly = [
-        entry.get("total")
-        for entry in station_b.get("OBSERVATIONS", {}).get("precipitation", [])
-    ]
+    precip_section = (station_b or {}).get("OBSERVATIONS", {}).get("precipitation", [])
+    hourly = [entry.get("total") for entry in precip_section]
+    date_time_b = [entry.get("last_report") for entry in precip_section]
 
-    date_time_b = [
-        entry.get("last_report")
-        for entry in station_b.get("OBSERVATIONS", {}).get("precipitation", [])
-    ]
-
-    daily_accum = _compute_precip_from_hourly(hourly, date_time_b, "daily")
+    daily_accum = _compute_precip_from_hourly(
+        hourly,
+        date_time_b,
+        day_start=day_start,
+        day_end=day_end,
+    )
 
     daily_in = mm_to_in(daily_accum)
 
-    if station_b is not None:
-        stid = station_b.get("STID", [])
-        wy_in, norm_in, pct = _get_precip_from_acis(stid)
+    stid = (station_b or {}).get("STID", [])
+    wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
 
     return {
             "stid": station_a.get("STID"),
@@ -362,19 +358,27 @@ def format_asos(station_a: Dict[str, Any], station_b: Optional[Dict[str, Any]]) 
             "percentOfNorm": pct,
         }
 
+
 def build_station_payload(
     stations_a: List[Dict[str, Any]],
     stations_b: Optional[List[Dict[str, Any]]] = None,
     *,
-    type: str
+    type: str,
+    day_start: datetime,
+    day_end: datetime,
+    now: datetime | None = None,
 ) -> List[Dict[str, Any]]:
-    """Transform a list of station records into a simplified structure."""
     if type is None:
         raise ValueError("Type is required.")
 
+    current = now or datetime.now(timezone.utc)
+
     if type == "HADS":
-        return [format_hads(station) for station in stations_a]
-    
+        return [
+            format_hads(station, day_start=day_start, day_end=day_end, now=current)
+            for station in stations_a
+        ]
+
     if type == "ASOS":
         if stations_b is None:
             raise ValueError("stations_b is required when type='ASOS'.")
@@ -386,7 +390,13 @@ def build_station_payload(
             )
 
         return [
-            format_asos(station_a, station_b)
+            format_asos(
+                station_a,
+                station_b,
+                day_start=day_start,
+                day_end=day_end,
+                now=current,
+            )
             for station_a, station_b in zip(stations_a, stations_b)
         ]
 

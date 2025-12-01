@@ -6,26 +6,24 @@ from urllib.error import HTTPError, URLError
 from typing import Any, Dict, List
 from datetime import datetime, timezone
 
-current = datetime.now(timezone.utc)
 
 def start_date(now: datetime | None = None) -> str:
     """
     Return the most recent past (or equal) Oct 1 0700Z
     as a string YYYYMMDDHHMM.
     """
-    # Use current UTC time if not provided
     if now is None:
         now = datetime.now(timezone.utc)
 
     year = now.year
     target = datetime(year, 10, 1, 7, 0, tzinfo=timezone.utc)
 
-    # If we're before this year's Oct 1 0700Z, use last year's
     if now < target:
         year -= 1
         target = datetime(year, 10, 1, 7, 0, tzinfo=timezone.utc)
 
     return target.strftime("%Y%m%d%H%M")
+
 
 class SynopticAPIError(Exception):
     """Custom error for Synoptic API issues."""
@@ -38,13 +36,15 @@ class SynopticClient:
     LATEST_URL = "https://api.synopticdata.com/v2/stations/timeseries"
     PRECIP_URL = "https://api.synopticdata.com/v2/stations/precipitation"
 
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(self, api_key: str | None = None, now: datetime | None = None) -> None:
         # Strip whitespace to avoid accidental quote/newline issues from env files.
         self.api_key = (api_key or os.environ.get("SYNOPTIC_KEY", "")).strip()
         if not self.api_key:
             raise SynopticAPIError(
                 "Synoptic API key is missing. Set the SYNOPTIC_KEY environment variable."
             )
+        # Allow the caller to control "now" (useful for snapshots/tests).
+        self.now = now or datetime.now(timezone.utc)
 
     def fetch_timeseries(self, station_ids: List[str]) -> Dict[str, Any]:
         """Fetch the timeseries of observations for the given station IDs.
@@ -63,9 +63,9 @@ class SynopticClient:
             "token": self.api_key,
             "vars": "air_temp,precip_accum",
             "showemptystations": 1,
-            "start": start_date(current),
-            "end": current.strftime("%Y%m%d%H%M"),
-            "hfmetars": 0
+            "start": start_date(self.now),
+            "end": self.now.strftime("%Y%m%d%H%M"),
+            "hfmetars": 0,
         }
         query = urllib.parse.urlencode(params)
         url = f"{self.TS_URL}?{query}"
@@ -94,7 +94,7 @@ class SynopticClient:
             )
 
         return payload
-    
+
     def fetch_latest(self, station_ids: List[str]) -> Dict[str, Any]:
         """Fetch the latest observations for the given station IDs.
 
@@ -113,7 +113,7 @@ class SynopticClient:
             "vars": "air_temp,air_temp_high_6_hour,air_temp_low_6_hour",
             "showemptystations": 1,
             "recent": 1440,
-            "hfmetars": 0
+            "hfmetars": 0,
         }
         query = urllib.parse.urlencode(params)
         url = f"{self.LATEST_URL}?{query}"
@@ -161,8 +161,8 @@ class SynopticClient:
             "pmode": "intervals",
             "interval": "hour",
             "showemptystations": 1,
-            "start": start_date(current),
-            "end": current.strftime("%Y%m%d%H%M"),
+            "start": start_date(self.now),
+            "end": self.now.strftime("%Y%m%d%H%M"),
         }
 
         query = urllib.parse.urlencode(params)

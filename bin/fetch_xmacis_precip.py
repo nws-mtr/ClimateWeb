@@ -21,7 +21,6 @@ def load_station_ids(path: str = "config/stations.yaml") -> Dict[str, List[str]]
     with p.open("r") as f:
         data = yaml.safe_load(f) or {}
     stations = data.get("stations", {})
-    # Ensure we always get lists of strings
     return {k: list(v or []) for k, v in stations.items()}
 
 stations = load_station_ids()
@@ -30,8 +29,6 @@ ASOS: List[str] = stations.get("ASOS", [])
 HADS: List[str] = stations.get("HADS", [])
 
 def load_xmacis_fallbacks(path: str = "config/stations.yaml") -> Dict[str, str]:
-    """Load optional XMACIS fallback station IDs from config."""
-
     p = Path(path)
     with p.open("r") as f:
         data = yaml.safe_load(f) or {}
@@ -57,9 +54,10 @@ def load_xmacis_fallbacks(path: str = "config/stations.yaml") -> Dict[str, str]:
 XMACIS_FALLBACKS: Dict[str, str] = load_xmacis_fallbacks()
 
 
-def fetch_xmacis_precip(station: str) -> Dict[str, Any]:
-    start = start_of_water_year_iso()
-    end = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+def fetch_xmacis_precip(station: str, now: datetime | None = None) -> Dict[str, Any]:
+    current = now or datetime.now(timezone.utc)
+    start = start_of_water_year_iso(current)
+    end = current.strftime("%Y-%m-%d")
 
     client = XMACISClient()
 
