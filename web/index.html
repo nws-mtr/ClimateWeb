@@ -39,7 +39,7 @@
       max-width: 100% auto;
       margin: 0 auto;
       padding: 32px 20px 48px;
-      margin-top: -3rem;
+      margin-top: -2rem;
     }
 
     header {
@@ -808,7 +808,7 @@
       clearError();
 
       try {
-        const response = await fetch('station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
+        const response = await fetch('/source/mtr/climateWeb/station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const json = await response.json();
         if (!json || !Array.isArray(json.data)) {
@@ -997,150 +997,150 @@
 
     loadData();
 
-  //   if (window.$) {
-  //     $(function(){
-  //     // hide the WFO level menus
-  //     //$('.subMenuNav').hide();
-  //     //$('.subMenuNav').remove();
-  //     $('ul#subMenuNav li').css({ 'margin-right': '25px' });
-  //     // reduce breadcrumb margin-bottom
-  //     $('.breadcrumb').css({ 'margin-bottom': '0px' });
-  //     // hide the big green "customize your weather.gov" box on the left
-  //     $('#myfcst-widget').hide();
-  //     // additional formatting to pull everything back to the left and style the borders, h/t WFOs ICT/btv
-  //     $('.full-width-border').css('border-top', 'white');
-  //     $('.partial-width-borderbottom').css('border-bottom', 'white');
+    if (window.$) {
+      $(function(){
+      // hide the WFO level menus
+      //$('.subMenuNav').hide();
+      //$('.subMenuNav').remove();
+      $('ul#subMenuNav li').css({ 'margin-right': '25px' });
+      // reduce breadcrumb margin-bottom
+      $('.breadcrumb').css({ 'margin-bottom': '0px' });
+      // hide the big green "customize your weather.gov" box on the left
+      $('#myfcst-widget').hide();
+      // additional formatting to pull everything back to the left and style the borders, h/t WFOs ICT/btv
+      $('.full-width-border').css('border-top', 'white');
+      $('.partial-width-borderbottom').css('border-bottom', 'white');
       
-  //     $('.five-sixth-first').css({
-  //       'width' : '100%',
-  //       'padding-right': '0px',
-  //       'padding-left': '0px'
-  //     });
+      $('.five-sixth-first').css({
+        'width' : '100%',
+        'padding-right': '0px',
+        'padding-left': '0px'
+      });
 
-  //     $('.content').css({
-  //       'width': '1200px',
-  //       'margin-right': 'auto',
-  //       'margin-left': 'auto'
-  //     });
+      $('.content').css({
+        'width': '1200px',
+        'margin-right': 'auto',
+        'margin-left': 'auto'
+      });
 
-  //     $('.center-content').css({
-  //       'width': '1200px',
-  //       'margin-right': 'auto',
-  //       'margin-left': 'auto',
-  //       'overflow': 'hidden'
-  //     });
+      $('.center-content').css({
+        'width': '1200px',
+        'margin-right': 'auto',
+        'margin-left': 'auto',
+        'overflow': 'hidden'
+      });
 
-  //     $('.header').css({
-	//     'margin': '0',
-	//     'height': '60px',
-  //       'width': '100%',
-  //       'background-color': '#C5E5F5',
-  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
-  //       'background-repeat': 'repeat-y',
-  //       'background-position': 'center top',
-  //       'background-size': '2000px',
-  //       'overflow': 'visible'
-  //     });
+      $('.header').css({
+	    'margin': '0',
+	    'height': '60px',
+        'width': '100%',
+        'background-color': '#C5E5F5',
+        'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+        'background-repeat': 'repeat-y',
+        'background-position': 'center top',
+        'background-size': '2000px',
+        'overflow': 'visible'
+      });
 
-  //     $('.header-content').css({
-	//     'margin': '0 auto',
-	//     'height': '60px',
-	//     'width': '1238px',
-  //       'overflow': 'visible'
-  //     });
+      $('.header-content').css({
+	    'margin': '0 auto',
+	    'height': '60px',
+	    'width': '1238px',
+        'overflow': 'visible'
+      });
 
-  //     $('.header-shadow').css({
-	//     'height': '10px',
-  //       'width': '100%',
-  //       'background-color': '#C5E5F5',
-  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
-  //       'background-repeat': 'repeat-x',
-  //       'background-position': 'center',
-  //       'background-size': '1998px',
-  //     });
+      $('.header-shadow').css({
+	    'height': '10px',
+        'width': '100%',
+        'background-color': '#C5E5F5',
+        'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+        'background-repeat': 'repeat-x',
+        'background-position': 'center',
+        'background-size': '1998px',
+      });
 
-  //     $('.header-shadow-content').css({
-	//     'margin': '0px auto',
-	//     'width': '1238px',
-	//     'height': '10px',
-	//     'background': 'url(https://www.weather.gov/css/images/head_shadow.png) center'	
-  //     });
+      $('.header-shadow-content').css({
+	    'margin': '0px auto',
+	    'width': '1238px',
+	    'height': '10px',
+	    'background': 'url(https://www.weather.gov/css/images/head_shadow.png) center'	
+      });
 
-  //     $('.footer').css({
-	//     'width': '100%',
-	//     'background-color': '#C5E5F5',
-  //       'background-image': 'url(https://www.weather.gov/css/images/bg_footer.png)',
-  //       'background-repeat': 'repeat-y',
-  //       'background-position': 'center',
-  //       'background-size': '2000px',
-	//     'visibility': 'visible',
-	//     'overflow': 'visible',
-	//     //'border-bottom': '4px double #1763ab'
-  //     });
+      $('.footer').css({
+	    'width': '100%',
+	    'background-color': '#C5E5F5',
+        'background-image': 'url(https://www.weather.gov/css/images/bg_footer.png)',
+        'background-repeat': 'repeat-y',
+        'background-position': 'center',
+        'background-size': '2000px',
+	    'visibility': 'visible',
+	    'overflow': 'visible',
+	    //'border-bottom': '4px double #1763ab'
+      });
 
-  //     $('.footer-content').css({
-	//     'width': '1238px',
-	//     'padding-left': '15px',
-	//     'padding-right': '15px',
-	//     'margin-left': 'auto',
-	//     'margin-right': 'auto',
-	//     'overflow': 'hidden',
-	//     'line-height': '16px',
-	//     'border-top': '4px double #1763ab',
-	//     'border-bottom': '4px double #1763ab'
-	//   });
+      $('.footer-content').css({
+	    'width': '1238px',
+	    'padding-left': '15px',
+	    'padding-right': '15px',
+	    'margin-left': 'auto',
+	    'margin-right': 'auto',
+	    'overflow': 'hidden',
+	    'line-height': '16px',
+	    'border-top': '4px double #1763ab',
+	    'border-bottom': '4px double #1763ab'
+	  });
 
-  //     $('.footer-legal').css({
-	//     'background-color': '#C5E5F5',
-  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
-  //       'background-repeat': 'repeat-y',
-  //       'background-position': 'center',
-  //       'background-size': '2000px',
-	//     'width': '100%',
-	//     'visibility': 'visible',
-	//     'overflow': 'hidden',
-	//     'padding-bottom': '10px'
-  //     });
+      $('.footer-legal').css({
+	    'background-color': '#C5E5F5',
+        'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+        'background-repeat': 'repeat-y',
+        'background-position': 'center',
+        'background-size': '2000px',
+	    'width': '100%',
+	    'visibility': 'visible',
+	    'overflow': 'hidden',
+	    'padding-bottom': '10px'
+      });
 
-  //     $('.footer-legal-content').css({
-	//     'width': '1238px',
-	//     'margin-left': 'auto',
-	//     'margin-right': 'auto',
-	//     'overflow': 'hidden',
-	//     'line-height': '16px',
-	//     'padding-top': '15px'
-  //     });
+      $('.footer-legal-content').css({
+	    'width': '1238px',
+	    'margin-left': 'auto',
+	    'margin-right': 'auto',
+	    'overflow': 'hidden',
+	    'line-height': '16px',
+	    'padding-top': '15px'
+      });
 
-  //     $('.center, body').css({
-  //       'width': '100%',
-  //       'background-color': '#C5E5F5',
-  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
-  //       'background-repeat': 'repeat-y',
-  //       'background-position': 'center top',
-  //       'background-size': '2000px',
-  //       'overflow': 'visible',
-  //     });
+      $('.center, body').css({
+        'width': '100%',
+        'background-color': '#C5E5F5',
+        'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+        'background-repeat': 'repeat-y',
+        'background-position': 'center top',
+        'background-size': '2000px',
+        'overflow': 'visible',
+      });
 
 
-  //     // hide the tiles on the bottom of the page since their content is already shown elsewhere on the page
-  //     //$('div.div-full.mod-image-tiles').hide();
-  //     // hide the national footer
-  //     //$('div.footer-content').hide();
-  //     // hide the local Top News section
-  //     //$('div#topnews').hide();
-  //     // hide the invisible element just below the forecast search box that's pushing the rest of the page content farther down
-  //     $('div#sidebar.one-sixth-first').hide();
-  //     // move the forecast search box from the top of the screen to where it used to be on the pre-NIDS EM page
-  //     $('div#forecast-lookup').appendTo('div#fcst');
-  //     // re-style the forecast search box's "Go" button to match the rest of the page
-  //     //$('input#btnSearch').button();
-  //     // hide the top navigation bar
-  //     //$('div.topnav').hide();
-  //     // Uncomment the next line to hide the Twitter/FB/YouTube/RSS links at the bottom of the page.
-  //     //$('div.full-width-first.communication-links').hide();
+      // hide the tiles on the bottom of the page since their content is already shown elsewhere on the page
+      //$('div.div-full.mod-image-tiles').hide();
+      // hide the national footer
+      //$('div.footer-content').hide();
+      // hide the local Top News section
+      //$('div#topnews').hide();
+      // hide the invisible element just below the forecast search box that's pushing the rest of the page content farther down
+      $('div#sidebar.one-sixth-first').hide();
+      // move the forecast search box from the top of the screen to where it used to be on the pre-NIDS EM page
+      $('div#forecast-lookup').appendTo('div#fcst');
+      // re-style the forecast search box's "Go" button to match the rest of the page
+      //$('input#btnSearch').button();
+      // hide the top navigation bar
+      //$('div.topnav').hide();
+      // Uncomment the next line to hide the Twitter/FB/YouTube/RSS links at the bottom of the page.
+      //$('div.full-width-first.communication-links').hide();
       
-  //     });
-  //   }
+      });
+    }
     
   </script>
 </body>
