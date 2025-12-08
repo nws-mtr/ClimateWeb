@@ -1,14 +1,13 @@
-﻿<!-- station_payloads.json lives alongside this file in the web/ directory.
-     To run locally, serve the web/ folder with any static file server (for example: `cd web && python -m http.server`)
-     and open index.html in your browser. -->
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Climate Summary</title>
-  <style>
-    :root {
+<!-- station_payloads.json lives alongside this file in the web/ directory.
+     To run locally, serve the web/ folder with any static file server (for example: `cd web && python -m http.server`)
+     and open index.html in your browser. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title></title>
+<style type="text/css">:root {
       --bg: #f1f5fb;
       --panel: #ffffff;
       --ink: #0f172a;
@@ -37,9 +36,10 @@
     }
 
     .page {
-      max-width: 1200px;
+      max-width: 100% auto;
       margin: 0 auto;
       padding: 32px 20px 48px;
+      margin-top: -3rem;
     }
 
     header {
@@ -206,6 +206,54 @@
       overflow: hidden;
     }
 
+    .station-card.pinned {
+      border-color: var(--accent);
+      box-shadow: 0 12px 30px rgba(45, 108, 223, 0.25);
+    }
+
+    .pin-button {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+      transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      z-index: 1;
+    }
+
+    .pin-button:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 10px 22px rgba(45, 108, 223, 0.25);
+    }
+
+    .pin-button.is-pinned {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      box-shadow: 0 10px 22px rgba(45, 108, 223, 0.25);
+    }
+
+    .pin-icon {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 6px;
+      left: 7px;
+      display: block;
+      background-color: currentColor;
+      -webkit-mask: url('images/pin-3-svgrepo-com.svg') center/contain no-repeat;
+      mask: url('images/pin-3-svgrepo-com.svg') center/contain no-repeat;
+    }
+
     .station-card::before {
       content: "";
       position: absolute;
@@ -262,6 +310,7 @@
       font-size: 18px;
       font-weight: 650;
       letter-spacing: -0.2px;
+      color:#000000;
     }
 
     .station-id {
@@ -477,67 +526,55 @@
         width: 100%;
       }
     }
-  </style>
+</style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <div class="title-block">
-        <p class="eyebrow">Daily Climate Summary</p>
-        <h1>Regional Daily Temperature and Precip Stats</h1>
-        <p class="lede">Daily high, low, and rainfall <b>since midnight</b> and water year (Oct 1 - Sep 30) rainfall stats. All values update hourly.</p>
-        <p class="lede"><strong>This page is experimental and automated. Data are preliminary and subject to additional quality control.</strong></p>
-      </div>
-    </header>
+<div class="page">
+<header>
+<div class="title-block">
+<p class="lede">Daily high, low, and rainfall <strong>since midnight</strong> and water year (Oct 1 - Sep 30) rainfall stats. All values update hourly.</p>
 
-    <section class="controls" aria-label="Filters and sorting">
-      <div class="control-group">
-        <label for="search">Search</label>
-        <input type="search" id="search" name="search" placeholder="Type a station ID or name" autocomplete="off">
-      </div>
-      <div class="control-group">
-        <label for="sortBy">Sort by</label>
-        <select id="sortBy" name="sortBy">
-          <option value="name">Station Name</option>
-          <option value="percentOfNorm">Percent of Normal</option>
-          <option value="dailyAccumIN">Precip Since Midnight</option>
-          <option value="airTempF">Current Temperature</option>
-          <option value="latitude">Latitude</option>
-        </select>
-        <button class="sort-direction" id="sortDirection" type="button" aria-label="Toggle sort direction">Ascending</button>
-      </div>
-      <div class="control-group">
-        <label for="printReport">Print report</label>
-        <button id="printReport" type="button">Today so far</button>
-        <button id="yesterdayReport" type="button">Yesterday</button>
-      </div>
-    </section>
+<p class="lede"><strong>***This page is experimental and automated. Data are preliminary and subject to additional quality control.***</strong></p>
+</div>
+</header>
 
-    <div class="status-line" id="status" aria-live="polite"></div>
-    <div class="error" id="error" role="alert"></div>
+<section aria-label="Filters and sorting" class="controls">
+<div class="control-group"><label for="search">Search</label> <input autocomplete="off" id="search" name="search" placeholder="Type a station ID or name" type="search" /></div>
 
-    <main>
-      <section class="cards-grid" id="cards" aria-live="polite"></section>
-      <div class="empty-state" id="emptyState" hidden>No stations to show yet.</div>
-    </main>
+<div class="control-group"><label for="sortBy">Sort by</label> <select id="sortBy" name="sortBy"><option value="name">Station Name</option><option value="percentOfNorm">Percent of Normal</option><option value="dailyAccumIN">Precip Since Midnight</option><option value="airTempF">Current Temperature</option><option value="latitude">Latitude</option> </select><button aria-label="Toggle sort direction" class="sort-direction" id="sortDirection" type="button">Ascending</button></div>
 
-    <section class="notes" id="notes">
-      <div class="notes-header">
-        <div class="title-block">
-          <p class="eyebrow">Guidance</p>
-          <h2 style="margin: 0;">Notes</h2>
-        </div>
-        <button class="notes-toggle" id="notesToggle" aria-expanded="true" aria-controls="notesBody" type="button">Hide</button>
-      </div>
-      <div class="notes-body" id="notesBody">
-        <p>This page summarizes daily climate observations per station, including temperature extremes and precipitation progress for the current water year.</p>
-        <p><strong>Percent of normal</strong> compares the current water year precipitation to the normal. Values below 75% are flagged as below normal, 75-125% as near normal, and above 125% as above normal.</p>
-        <p>Missing data is indicated by a dash (—).</p>
-      </div>
-    </section>
-  </div>
+<div class="control-group"><label>Generate Report</label><button id="printReport" type="button">Today So Far</button><button id="yesterdayReport" type="button">Yesterday</button></div>
+</section>
 
-  <script>
+<div aria-live="polite" class="status-line" id="status">&nbsp;</div>
+
+<div class="error" id="error" role="alert">&nbsp;</div>
+
+<main>
+<section aria-live="polite" class="cards-grid" id="cards">&nbsp;</section>
+
+<div class="empty-state" hidden="" id="emptyState">No stations to show yet.</div>
+</main>
+
+<section class="notes" id="notes">
+<div class="notes-header">
+<div class="title-block">
+<p class="eyebrow">Guidance</p>
+
+<h2 style="margin: 0;">Notes</h2>
+</div>
+<button aria-controls="notesBody" aria-expanded="true" class="notes-toggle" id="notesToggle" type="button">Hide</button></div>
+
+<div class="notes-body" id="notesBody">
+<p>This page summarizes daily climate observations per station, including temperature high/low and precipitation progress for the current water year (Oct 1 - Sep 30).</p>
+
+<p><strong>Percent of normal</strong> compares the current water year precipitation to the normal. Values below 75% are flagged as below normal, 75-125% as near normal, and above 125% as above normal.</p>
+
+<p>Missing data is indicated by a dash (&mdash;).</p>
+</div>
+</section>
+</div>
+<script>
     const state = {
       stations: [],
       meta: {},
@@ -545,7 +582,8 @@
       yesterdayMeta: {},
       sortKey: 'stid',
       sortDir: 'asc',
-      filteredStations: []
+      filteredStations: [],
+      pinned: new Set()
     };
 
     const cardsEl = document.getElementById('cards');
@@ -562,6 +600,10 @@
 
     function isMissing(value) {
       return value === 9999 || value === '9999' || value === null || value === undefined;
+    }
+
+    function isPinned(station) {
+      return state.pinned.has(String(station?.stid));
     }
 
     function formatNumber(value, decimals = 0, suffix = '') {
@@ -646,9 +688,14 @@
         const percent = percentTone(station.percentOfNorm);
         const normal = normalTone(station.waterYearNormIN);
         const map = mapLink(station);
+        const stid = station.stid || '';
+        const pinned = isPinned(station);
         const card = document.createElement('article');
-        card.className = 'station-card';
+        card.className = `station-card${pinned ? ' pinned' : ''}`;
         card.innerHTML = `
+          <button class="pin-button${pinned ? ' is-pinned' : ''}" type="button" aria-pressed="${pinned}" aria-label="${pinned ? 'Unpin' : 'Pin'} station ${stid || station.name || ''}" data-stid="${stid}">
+            <span class="pin-icon" aria-hidden="true"></span>
+          </button>
           <div class="card-header" title="Station ${station.stid}">
             <div class="card-title">
               <span class="station-id">${station.stid || '-'}</span>
@@ -665,17 +712,14 @@
           <div class="metrics">
             <div class="metric">
               <div class="metric-label">High</div>
-              <div class="metric-sub-label">(since midnight)</div>
               <div class="metric-value">${formatNumber(station.dailyMaxF, 0, '°F')}</div>
             </div>
             <div class="metric">
               <div class="metric-label">Low</div>
-              <div class="metric-sub-label">(since midnight)</div>
               <div class="metric-value">${formatNumber(station.dailyMinF, 0, '°F')}</div>
             </div>
             <div class="metric">
               <div class="metric-label">Precip</div>
-              <div class="metric-sub-label">(since midnight)</div>
               <div class="metric-value">${formatNumber(station.dailyAccumIN, 2, '"')}</div>
             </div>
             <div class="metric">
@@ -721,6 +765,16 @@
       return numA === numB ? 0 : numA > numB ? 1 : -1;
     }
 
+    function sortStations(list) {
+      const direction = state.sortDir === 'asc' ? 1 : -1;
+      return [...list].sort((a, b) => direction * compare(a, b, state.sortKey));
+    }
+
+    function getPinnedStations(sourceStations) {
+      if (!state.pinned.size) return [];
+      return sourceStations.filter((station) => state.pinned.has(String(station.stid)));
+    }
+
     function getFilteredStations(sourceStations) {
       const query = searchInput.value.trim().toLowerCase();
       let filtered = [...sourceStations];
@@ -732,16 +786,21 @@
         );
       }
 
-      const direction = state.sortDir === 'asc' ? 1 : -1;
-      filtered.sort((a, b) => direction * compare(a, b, state.sortKey));
-      return filtered;
+      const pinnedStations = sortStations(getPinnedStations(sourceStations));
+      const sortedFiltered = sortStations(filtered);
+      const pinnedIds = new Set(pinnedStations.map((station) => String(station.stid)));
+      const unpinnedFiltered = sortedFiltered.filter((station) => !pinnedIds.has(String(station.stid)));
+
+      return [...pinnedStations, ...unpinnedFiltered];
     }
 
     function applyFilters() {
       const filtered = getFilteredStations(state.stations);
       state.filteredStations = filtered;
       renderCards(filtered);
-      setStatus(filtered.length ? `Showing ${filtered.length} station${filtered.length === 1 ? '' : 's'}.` : 'No matching stations.');
+      const pinnedCount = getPinnedStations(state.stations).length;
+      const pinnedLabel = pinnedCount ? ` (${pinnedCount} pinned)` : '';
+      setStatus(filtered.length ? `Showing ${filtered.length} station${filtered.length === 1 ? '' : 's'}${pinnedLabel}.` : 'No matching stations.');
     }
 
     async function loadData() {
@@ -749,7 +808,7 @@
       clearError();
 
       try {
-        const response = await fetch('./station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
+        const response = await fetch('station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const json = await response.json();
         if (!json || !Array.isArray(json.data)) {
@@ -769,7 +828,7 @@
       if (state.yesterdayStations.length) return state.yesterdayStations;
 
       try {
-        const response = await fetch('./station_payloads_yesterday.json', { cache: 'no-cache' });
+        const response = await fetch('/source/mtr/climateWeb/station_payloads_yesterday.json', { cache: 'no-cache' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const json = await response.json();
         if (!json || !Array.isArray(json.data)) {
@@ -795,6 +854,25 @@
       const isCollapsed = notesSection.classList.toggle('collapsed');
       notesToggle.textContent = isCollapsed ? 'Show' : 'Hide';
       notesToggle.setAttribute('aria-expanded', (!isCollapsed).toString());
+    }
+
+    function togglePin(stid) {
+      const key = String(stid || '');
+      if (!key) return;
+
+      if (state.pinned.has(key)) {
+        state.pinned.delete(key);
+      } else {
+        state.pinned.add(key);
+      }
+      applyFilters();
+    }
+
+    function handlePinClick(event) {
+      const pinButton = event.target.closest('.pin-button');
+      if (!pinButton) return;
+      const { stid } = pinButton.dataset;
+      togglePin(stid);
     }
 
     function escapeHtml(text) {
@@ -911,15 +989,159 @@
       state.sortKey = event.target.value;
       applyFilters();
     });
+    cardsEl.addEventListener('click', handlePinClick);
     sortDirectionBtn.addEventListener('click', toggleSortDirection);
     notesToggle.addEventListener('click', toggleNotes);
     printButton.addEventListener('click', openPrintReport);
     yesterdayButton.addEventListener('click', () => { void openYesterdayReport(); });
 
     loadData();
+
+  //   if (window.$) {
+  //     $(function(){
+  //     // hide the WFO level menus
+  //     //$('.subMenuNav').hide();
+  //     //$('.subMenuNav').remove();
+  //     $('ul#subMenuNav li').css({ 'margin-right': '25px' });
+  //     // reduce breadcrumb margin-bottom
+  //     $('.breadcrumb').css({ 'margin-bottom': '0px' });
+  //     // hide the big green "customize your weather.gov" box on the left
+  //     $('#myfcst-widget').hide();
+  //     // additional formatting to pull everything back to the left and style the borders, h/t WFOs ICT/btv
+  //     $('.full-width-border').css('border-top', 'white');
+  //     $('.partial-width-borderbottom').css('border-bottom', 'white');
+      
+  //     $('.five-sixth-first').css({
+  //       'width' : '100%',
+  //       'padding-right': '0px',
+  //       'padding-left': '0px'
+  //     });
+
+  //     $('.content').css({
+  //       'width': '1200px',
+  //       'margin-right': 'auto',
+  //       'margin-left': 'auto'
+  //     });
+
+  //     $('.center-content').css({
+  //       'width': '1200px',
+  //       'margin-right': 'auto',
+  //       'margin-left': 'auto',
+  //       'overflow': 'hidden'
+  //     });
+
+  //     $('.header').css({
+	//     'margin': '0',
+	//     'height': '60px',
+  //       'width': '100%',
+  //       'background-color': '#C5E5F5',
+  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+  //       'background-repeat': 'repeat-y',
+  //       'background-position': 'center top',
+  //       'background-size': '2000px',
+  //       'overflow': 'visible'
+  //     });
+
+  //     $('.header-content').css({
+	//     'margin': '0 auto',
+	//     'height': '60px',
+	//     'width': '1238px',
+  //       'overflow': 'visible'
+  //     });
+
+  //     $('.header-shadow').css({
+	//     'height': '10px',
+  //       'width': '100%',
+  //       'background-color': '#C5E5F5',
+  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+  //       'background-repeat': 'repeat-x',
+  //       'background-position': 'center',
+  //       'background-size': '1998px',
+  //     });
+
+  //     $('.header-shadow-content').css({
+	//     'margin': '0px auto',
+	//     'width': '1238px',
+	//     'height': '10px',
+	//     'background': 'url(https://www.weather.gov/css/images/head_shadow.png) center'	
+  //     });
+
+  //     $('.footer').css({
+	//     'width': '100%',
+	//     'background-color': '#C5E5F5',
+  //       'background-image': 'url(https://www.weather.gov/css/images/bg_footer.png)',
+  //       'background-repeat': 'repeat-y',
+  //       'background-position': 'center',
+  //       'background-size': '2000px',
+	//     'visibility': 'visible',
+	//     'overflow': 'visible',
+	//     //'border-bottom': '4px double #1763ab'
+  //     });
+
+  //     $('.footer-content').css({
+	//     'width': '1238px',
+	//     'padding-left': '15px',
+	//     'padding-right': '15px',
+	//     'margin-left': 'auto',
+	//     'margin-right': 'auto',
+	//     'overflow': 'hidden',
+	//     'line-height': '16px',
+	//     'border-top': '4px double #1763ab',
+	//     'border-bottom': '4px double #1763ab'
+	//   });
+
+  //     $('.footer-legal').css({
+	//     'background-color': '#C5E5F5',
+  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+  //       'background-repeat': 'repeat-y',
+  //       'background-position': 'center',
+  //       'background-size': '2000px',
+	//     'width': '100%',
+	//     'visibility': 'visible',
+	//     'overflow': 'hidden',
+	//     'padding-bottom': '10px'
+  //     });
+
+  //     $('.footer-legal-content').css({
+	//     'width': '1238px',
+	//     'margin-left': 'auto',
+	//     'margin-right': 'auto',
+	//     'overflow': 'hidden',
+	//     'line-height': '16px',
+	//     'padding-top': '15px'
+  //     });
+
+  //     $('.center, body').css({
+  //       'width': '100%',
+  //       'background-color': '#C5E5F5',
+  //       'background-image': 'url(https://www.weather.gov/css/images/bg.png)',
+  //       'background-repeat': 'repeat-y',
+  //       'background-position': 'center top',
+  //       'background-size': '2000px',
+  //       'overflow': 'visible',
+  //     });
+
+
+  //     // hide the tiles on the bottom of the page since their content is already shown elsewhere on the page
+  //     //$('div.div-full.mod-image-tiles').hide();
+  //     // hide the national footer
+  //     //$('div.footer-content').hide();
+  //     // hide the local Top News section
+  //     //$('div#topnews').hide();
+  //     // hide the invisible element just below the forecast search box that's pushing the rest of the page content farther down
+  //     $('div#sidebar.one-sixth-first').hide();
+  //     // move the forecast search box from the top of the screen to where it used to be on the pre-NIDS EM page
+  //     $('div#forecast-lookup').appendTo('div#fcst');
+  //     // re-style the forecast search box's "Go" button to match the rest of the page
+  //     //$('input#btnSearch').button();
+  //     // hide the top navigation bar
+  //     //$('div.topnav').hide();
+  //     // Uncomment the next line to hide the Twitter/FB/YouTube/RSS links at the bottom of the page.
+  //     //$('div.full-width-first.communication-links').hide();
+      
+  //     });
+  //   }
+    
   </script>
 </body>
 </html>
-
-
-
