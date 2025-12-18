@@ -281,23 +281,22 @@ def get_hads_maxmin(lid: str,
         print('Database name not found.')
 
     db = pgdb.connect(database=dbname)
-    cur_hi = db.cursor()
-    cur_lo = db.cursor()
+    cur = db.cursor()
 
     sql_hi = ("SELECT lid,pe,extremum,value,postingtime,extract(hour from obstime),\
         extract(minute from obstime),extract(day from obstime),obstime FROM temperature  WHERE lid='" + \
         lid + "' and pe='TA' and ts='RG' and extremum='D' ORDER BY postingtime desc limit 1;")
 
-    cur_hi.execute(sql_hi)
-    tempHigh = cur_hi.fetchall()
+    cur.execute(sql_hi)
+    tempHigh = cur.fetchall()
     maxF = np.round(tempHigh[0][3])
 
     sql_lo = ("SELECT lid,pe,extremum,value,postingtime,extract(hour from obstime),\
         extract(minute from obstime),extract(day from obstime),obstime FROM temperature  WHERE lid='" + \
         lid + "' and pe='TA' and ts='RG' and extremum='F' ORDER BY postingtime desc limit 1;")
 
-    cur_lo.execute(sql_lo)
-    tempLow = cur_lo.fetchall()
+    cur.execute(sql_lo)
+    tempLow = cur.fetchall()
     minF = np.round(tempLow[0][3])
 
     return maxF, minF
@@ -327,6 +326,8 @@ def format_hads(
         date_time=now,
         tracker=daily_tracker,
     )
+
+    print(f"Station: {stid} MaxF: {maxF} MinF: {minF}")
     
     currentF = c_to_f(air_temp[-1]) if air_temp else None
 
