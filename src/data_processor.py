@@ -186,6 +186,8 @@ def _compute_daily_temp_range(
     fallback_time: Any,
     maxT_6hr: Optional[Any] = None,
     minT_6hr: Optional[Any] = None,
+    hourMax: Optional[float] = None,
+    hourMin: Optional[float] = None,
     *,
     day_start: datetime,
     day_end: datetime,
@@ -230,13 +232,86 @@ def _compute_daily_temp_range(
             return a
         return min(a, b)
 
-    daily_max = _pick_max(hourly_max, max6)
-    daily_min = _pick_min(hourly_min, min6)
+    # If hourMax and hourMin are provided from OSO, use them as the primary source
+    if hourMax is not None and hourMin is not None:
+        daily_max = hourMax
+        daily_min = hourMin
+    else:
+        daily_max = _pick_max(hourly_max, max6)
+        daily_min = _pick_min(hourly_min, min6)
 
     if daily_max is None or daily_min is None:
         return None, None
 
     return daily_max, daily_min
+
+
+def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Parse OSO text file to extract hourly high and low temps.
+    Returns (hourMax, hourMin) in Celsius if data is fresh (<2 hours old), otherwise (None, None).
+    """
+    # Map station IDs to OSO file suffixes
+    stn_map = {
+        'SFOC1': 'SFD',
+        'RWCC1': 'RWC',
+        'SARC1': 'SRF',
+        'OAMC1': 'OKL',
+    }
+    
+    stn = stn_map.get(stid)
+    if stn is None:
+        return None, None
+    
+    oso_file = f"{home_dir}\\SFOOSO{stn}"
+    
+    try:
+        with open(oso_file, 'r') as f:
+            content = f.read()
+        
+        # Parse the time from the format "SA MMDDhhmm"
+        import re
+        time_match = re.search(r'SA (\d{8})', content)
+        if not time_match:
+            return None, None
+        
+        time_str = time_match.group(1)
+        # Parse MMDDhhmm UTC
+        month = int(time_str[0:2])
+        day = int(time_str[2:4])
+        hour = int(time_str[4:6])
+        minute = int(time_str[6:8])
+        
+        # Construct datetime - use current year, handle year boundary
+        year = now.year
+        if now.month == 1 and month == 12:
+            year -= 1
+        
+        oso_time = datetime(year, month, day, hour, minute, tzinfo=timezone.utc)
+        
+        # Check if data is more than 2 hours old
+        time_diff = now - oso_time
+        if time_diff > timedelta(hours=2):
+            return None, None
+        
+        # Extract HI and LO values
+        hi_match = re.search(r'HI\s+(\d+)', content)
+        lo_match = re.search(r'LO\s+(\d+)', content)
+        
+        if not hi_match or not lo_match:
+            return None, None
+        
+        hi_f = float(hi_match.group(1))
+        lo_f = float(lo_match.group(1))
+        
+        # Convert Fahrenheit to Celsius
+        hi_c = (hi_f - 32) * 5 / 9
+        lo_c = (lo_f - 32) * 5 / 9
+        
+        return hi_c, lo_c
+        
+    except (FileNotFoundError, ValueError, OSError):
+        return None, None
 
 
 def format_hads(
@@ -250,9 +325,19 @@ def format_hads(
     date_time = observations.get("date_time") or []
     dt_latest = date_time[-1] if date_time else None
 
+    # Try to get hourly temps from OSO file
+    stid = station.get("STID", "")
+    import os
+    # Use the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    home_dir = os.path.dirname(script_dir)  # Go up one level from src/ to project root
+    hourMax, hourMin = _parse_oso_file(stid, now, home_dir)
+
     daily_maxT, daily_minT = _compute_daily_temp_range(
         air_temp,
         date_time,
+        hourMax=hourMax,
+        hourMin=hourMin,
         day_start=day_start,
         day_end=day_end,
     )

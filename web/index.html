@@ -808,7 +808,7 @@
       clearError();
 
       try {
-        const response = await fetch('/source/mtr/climateWeb/station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
+        const response = await fetch('station_payloads.json', { cache: 'no-cache' }); //   '/source/mtr/climateWeb/station_payloads.json' 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const json = await response.json();
         if (!json || !Array.isArray(json.data)) {
