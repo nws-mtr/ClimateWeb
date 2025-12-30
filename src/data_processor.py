@@ -1,7 +1,5 @@
 import numpy as np
-import os
-import pgdb
-from datetime import datetime, timezone, timedelta, date
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from bin.fetch_xmacis_precip import fetch_xmacis_precip
@@ -10,6 +8,7 @@ try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover - fallback for older Python
     from backports.zoneinfo import ZoneInfo  # type: ignore
+
 
 def mm_to_in(mm):
     if mm is None:
@@ -181,6 +180,7 @@ def unwrap_cumulative(values: Iterable[Optional[float]]) -> List[Optional[float]
 
     return out
 
+
 def _compute_daily_temp_range(
     air_temp: Any,
     fallback_time: Any,
@@ -238,70 +238,6 @@ def _compute_daily_temp_range(
 
     return daily_max, daily_min
 
-def _compute_hads_daily_extremes(
-    stid: str,
-    tempHigh: int,
-    tempLow: int,
-    date_time: datetime,
-    tracker: Dict[Tuple[str, date], dict]
-) -> Tuple[int, int]:
-    """
-    Updates and returns the running max high and min low for the day.
-    """
-
-    day_key = (stid, date_time.date())
-
-    if day_key not in tracker:
-        tracker[day_key] = {
-            "max_high": tempHigh,
-            "min_low": tempLow
-        }
-    else:
-        tracker[day_key]["max_high"] = max(
-            tracker[day_key]["max_high"], tempHigh
-        )
-        tracker[day_key]["min_low"] = min(
-            tracker[day_key]["min_low"], tempLow
-        )
-
-    return (
-        tracker[day_key]["max_high"],
-        tracker[day_key]["min_low"]
-    )
-
-def get_hads_maxmin(lid: str,
-) -> Dict[str, Any]:
-    db_name = ''
-    
-    i = os.popen('/awips/hydroapps/public/bin/get_apps_defaults.LX db_name')
-    dbname = i.readline().rstrip()
-    i.close()
-    
-    if not (dbname):
-        print('Database name not found.')
-
-    db = pgdb.connect(database=dbname)
-    cur = db.cursor()
-
-    sql_hi = ("SELECT lid,pe,extremum,value,postingtime,extract(hour from obstime),\
-        extract(minute from obstime),extract(day from obstime),obstime FROM temperature  WHERE lid='" + \
-        lid + "' and pe='TA' and ts='RG' and extremum='D' ORDER BY postingtime desc limit 1;")
-
-    cur.execute(sql_hi)
-    tempHigh = cur.fetchall()
-    maxF = np.round(tempHigh[0][3])
-
-    sql_lo = ("SELECT lid,pe,extremum,value,postingtime,extract(hour from obstime),\
-        extract(minute from obstime),extract(day from obstime),obstime FROM temperature  WHERE lid='" + \
-        lid + "' and pe='TA' and ts='RG' and extremum='F' ORDER BY postingtime desc limit 1;")
-
-    cur.execute(sql_lo)
-    tempLow = cur.fetchall()
-    minF = np.round(tempLow[0][3])
-
-    return maxF, minF
-
-daily_tracker = {}
 
 def format_hads(
     station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime
@@ -314,21 +250,15 @@ def format_hads(
     date_time = observations.get("date_time") or []
     dt_latest = date_time[-1] if date_time else None
 
-    stid = station.get("STID", {})
-
-    hadsMax = get_hads_maxmin(stid)[0]
-    hadsMin = get_hads_maxmin(stid)[1]
-
-    maxF, minF = _compute_hads_daily_extremes(
-        stid=stid,
-        tempHigh=hadsMax,
-        tempLow=hadsMin,
-        date_time=now,
-        tracker=daily_tracker,
+    daily_maxT, daily_minT = _compute_daily_temp_range(
+        air_temp,
+        date_time,
+        day_start=day_start,
+        day_end=day_end,
     )
 
-    print(f"Station: {stid} MaxF: {maxF} MinF: {minF}")
-    
+    maxF = c_to_f(daily_maxT)
+    minF = c_to_f(daily_minT)
     currentF = c_to_f(air_temp[-1]) if air_temp else None
 
     daily_accum = _compute_daily_from_cumulative(
@@ -343,10 +273,17 @@ def format_hads(
     wy_in_station = mm_to_in(wy_latest)
     daily_in = mm_to_in(daily_accum)
 
+    stid = station.get("STID", {})
     wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
 
     if wy_in_station is not None:
         wy_in = wy_in_station
+        
+        if station.get("STID") == 'SFOC1':
+            wy_in = wy_in - 0.12
+        
+        if norm_in != 9999:
+            pct = int((wy_in / norm_in) * 100)
 
     return {
         "stid": station.get("STID"),
@@ -363,6 +300,7 @@ def format_hads(
         "waterYearNormIN": norm_in,
         "percentOfNorm": pct,
     }
+
 
 def format_asos(
     station_a: Dict[str, Any],
