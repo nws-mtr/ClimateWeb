@@ -899,20 +899,59 @@
       });
       const headingContext = contextLabel ? ` (${contextLabel})` : '';
 
+      // Location mapping for station IDs
+      const locationMap = {
+        'SFOC1': 'SF Downtown',
+        'CTOC1': 'Corralitos RAWS',
+        'HDZC1': 'Hernandez RAWS',
+        'KCCR': 'Concord AP',
+        'KMRY': 'Monterey AP',
+        'KO69': 'Petaluma AP',
+        'KSFO': 'San Francisco AP',
+        'KSJC': 'San Jose AP',
+        'KSNS': 'Salinas AP',
+        'OAMC1': 'Oakland Museum',
+        'PKFC1': 'Parkfield RAWS',
+        'RWCC1': 'Redwood City',
+        'SARC1': 'San Rafael',
+        'SRTC1': 'Santa Rita RAWS'
+      };
+
+      // Define column widths for alignment
+      const columnWidths = [8, 16, 10, 10, 12, 12, 10, 12]; // Site, Location, High, Low, Precip, Water Year, Normal, % of Normal
+      
       const columns = [
         'Site',
-        'High',
-        'Low',
-        'Precip',
+        'Location',
+        'High (F)',
+        'Low (F)',
+        'Precip (in)',
         'Water Year',
         'Normal',
         '% of Normal'
       ];
 
+      // Helper function to pad strings to fixed width with center alignment
+      function padColumn(str, width, align = 'center') {
+        const s = String(str);
+        if (align === 'center') {
+          const totalPad = width - s.length;
+          const leftPad = Math.floor(totalPad / 2);
+          const rightPad = totalPad - leftPad;
+          return ' '.repeat(leftPad) + s + ' '.repeat(rightPad);
+        } else if (align === 'right') {
+          return s.padStart(width, ' ');
+        }
+        return s.padEnd(width, ' ');
+      }
+
       const header = [
-        `Daily Climate Report ${reportDateLabel}${headingContext}`,
+        `Daily Climate Report for ${reportDateLabel}`,
         'National Weather Service San Francisco CA',
-        generatedAt.toLocaleString(undefined, {
+        'Daily observations are since 0800 GMT',
+        'Water Year and Normal are since Oct 1',
+        `Stations included: ${stations.length}`,
+        `Generated ${generatedAt.toLocaleString(undefined, {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -920,23 +959,33 @@
           hour: 'numeric',
           minute: '2-digit',
           timeZoneName: 'short'
-        }),
-        'Daily observations are since 0800 GMT',
-        `Stations included: ${stations.length}`,
+        })}`,
         ''
       ];
 
-      const rows = stations.map((station) => ([
-        `${station.stid}`,
-        formatNumber(station.dailyMaxF, 0),
-        formatNumber(station.dailyMinF, 0),
-        formatNumber(station.dailyAccumIN, 2),
-        formatNumber(station.waterYearIN, 2),
-        formatNumber(station.waterYearNormIN, 2),
-        formatPercent(station.percentOfNorm)
-      ].join('........')));
+      const rows = stations.map((station) => {
+        const rowData = [
+          station.stid,
+          locationMap[station.stid] || station.stid,
+          formatNumber(station.dailyMaxF, 0),
+          formatNumber(station.dailyMinF, 0),
+          formatNumber(station.dailyAccumIN, 2),
+          formatNumber(station.waterYearIN, 2),
+          formatNumber(station.waterYearNormIN, 2),
+          formatPercent(station.percentOfNorm)
+        ];
+        
+        return rowData.map((value, i) => {
+          const align = (i === 0 || i === 1) ? 'left' : 'center';
+          return padColumn(value, columnWidths[i], align);
+        }).join('  ');
+      });
 
-      const headerLine = columns.join('      ');
+      const headerLine = columns.map((col, i) => {
+        const align = (i === 0 || i === 1) ? 'left' : 'center';
+        return padColumn(col, columnWidths[i], align);
+      }).join('  ');
+      
       const divider = '-'.repeat(headerLine.length);
       const title = `Daily_Climate_Report_${reportDay.getFullYear()}_${String(reportDay.getMonth() + 1).padStart(2, '0')}_${String(reportDay.getDate()).padStart(2, '0')}`;
 
@@ -954,7 +1003,6 @@
       reportWindow.document.title = report.title;
       reportWindow.document.body.innerHTML = `<pre style="white-space: pre-wrap; font: 14px/1.5 monospace; margin: 16px;">${escapeHtml(report.text)}</pre>`;
       reportWindow.focus();
-      reportWindow.print();
     }
 
     function openPrintReport() {
