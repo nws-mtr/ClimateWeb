@@ -17,7 +17,6 @@ from src.data_processor import build_station_payload, climate_day_window
 OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads.json"
 YESTERDAY_OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads_yesterday.json"
 
-
 def _format_day_label(day_start: datetime) -> str:
     try:
         from zoneinfo import ZoneInfo

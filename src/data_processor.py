@@ -338,6 +338,24 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         day_start = get_midnight(now)
         day_key = day_start.strftime("%Y-%m-%d")
         
+        # Check if we need to archive yesterday's cache
+        # If cache exists and has data from a different day, archive it
+        if cache:
+            # Find any station's day to check if cache is from yesterday
+            for station_data in cache.values():
+                if isinstance(station_data, dict) and 'day' in station_data:
+                    cached_day = station_data['day']
+                    if cached_day != day_key:
+                        # Archive yesterday's cache
+                        yesterday_cache_file = f"{home_dir}\\oso_cache_yesterday.json"
+                        try:
+                            _save_oso_cache(yesterday_cache_file, cache)
+                        except:
+                            pass
+                        # Clear current cache for new day
+                        cache = {}
+                    break
+        
         # Initialize or get station's daily cache
         if stid not in cache:
             cache[stid] = {}

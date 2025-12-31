@@ -541,7 +541,7 @@
 <section aria-label="Filters and sorting" class="controls">
 <div class="control-group"><label for="search">Search</label> <input autocomplete="off" id="search" name="search" placeholder="Type a station ID or name" type="search" /></div>
 
-<div class="control-group"><label for="sortBy">Sort by</label> <select id="sortBy" name="sortBy"><option value="name">Station Name</option><option value="percentOfNorm">Percent of Normal</option><option value="dailyAccumIN">Precip Since Midnight</option><option value="airTempF">Current Temperature</option><option value="latitude">Latitude</option> </select><button aria-label="Toggle sort direction" class="sort-direction" id="sortDirection" type="button">Ascending</button></div>
+<div class="control-group"><label for="sortBy">Sort by</label> <select id="sortBy" name="sortBy"><option value="default">Default Order</option><option value="name">Station Name</option><option value="percentOfNorm">Percent of Normal</option><option value="dailyAccumIN">Precip Since Midnight</option><option value="airTempF">Current Temperature</option><option value="latitude">Latitude</option> </select><button aria-label="Toggle sort direction" class="sort-direction" id="sortDirection" type="button">Ascending</button></div>
 
 <div class="control-group"><label>Generate Report</label><button id="printReport" type="button">Today So Far</button><button id="yesterdayReport" type="button">Yesterday</button></div>
 </section>
@@ -580,11 +580,17 @@
       meta: {},
       yesterdayStations: [],
       yesterdayMeta: {},
-      sortKey: 'stid',
+      sortKey: 'default',
       sortDir: 'asc',
       filteredStations: [],
       pinned: new Set()
     };
+
+    // Custom default order for stations
+    const defaultStationOrder = [
+      'SFOC1', 'OAMC1', 'SARC1', 'RWCC1', 'KSFO', 'KSJC', 'KMRY', 
+      'KSNS', 'KCCR', 'KO69', 'CTOC1', 'PKFC1', 'SRTC1', 'HDZC1'
+    ];
 
     const cardsEl = document.getElementById('cards');
     const statusEl = document.getElementById('status');
@@ -766,6 +772,25 @@
     }
 
     function sortStations(list) {
+      // Handle custom default order
+      if (state.sortKey === 'default') {
+        return [...list].sort((a, b) => {
+          const indexA = defaultStationOrder.indexOf(a.stid);
+          const indexB = defaultStationOrder.indexOf(b.stid);
+          
+          // If both stations are in the custom order, sort by their position
+          if (indexA !== -1 && indexB !== -1) {
+            return indexA - indexB;
+          }
+          // Stations not in the list go to the end
+          if (indexA !== -1) return -1;
+          if (indexB !== -1) return 1;
+          // If neither is in the list, sort alphabetically by stid
+          return compare(a, b, 'stid');
+        });
+      }
+      
+      // Standard sorting for other fields
       const direction = state.sortDir === 'asc' ? 1 : -1;
       return [...list].sort((a, b) => direction * compare(a, b, state.sortKey));
     }
