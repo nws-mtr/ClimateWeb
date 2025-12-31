@@ -1,6 +1,8 @@
 import numpy as np
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+import json
+import os
 
 from bin.fetch_xmacis_precip import fetch_xmacis_precip
 
@@ -246,9 +248,30 @@ def _compute_daily_temp_range(
     return daily_max, daily_min
 
 
+def _load_oso_cache(cache_file: str) -> Dict[str, Any]:
+    """Load OSO cache from JSON file."""
+    try:
+        if os.path.exists(cache_file):
+            with open(cache_file, 'r') as f:
+                return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        pass
+    return {}
+
+
+def _save_oso_cache(cache_file: str, cache: Dict[str, Any]) -> None:
+    """Save OSO cache to JSON file."""
+    try:
+        with open(cache_file, 'w') as f:
+            json.dump(cache, f, indent=2)
+    except IOError:
+        pass
+
+
 def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[float], Optional[float]]:
     """
-    Parse OSO text file to extract hourly high and low temps.
+    Parse OSO text file to extract accumulated daily high and low temps.
+    Tracks hourly HI/LO values and returns the max HI and min LO since 0800 UTC.
     Returns (hourMax, hourMin) in Celsius if data is fresh (<2 hours old), otherwise (None, None).
     """
     # Map station IDs to OSO file suffixes
@@ -264,6 +287,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         return None, None
     
     oso_file = f"{home_dir}\\SFOOSO{stn}"
+    cache_file = f"{home_dir}\\oso_cache.json"
     
     try:
         with open(oso_file, 'r') as f:
@@ -276,6 +300,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
             return None, None
         
         time_str = time_match.group(1)
+        
         # Parse MMDDhhmm UTC
         month = int(time_str[0:2])
         day = int(time_str[2:4])
@@ -294,7 +319,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         if time_diff > timedelta(hours=2):
             return None, None
         
-        # Extract HI and LO values
+        # Extract HI and LO values (in Fahrenheit)
         hi_match = re.search(r'HI\s+(\d+)', content)
         lo_match = re.search(r'LO\s+(\d+)', content)
         
@@ -304,15 +329,43 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         hi_f = float(hi_match.group(1))
         lo_f = float(lo_match.group(1))
         
-        # Convert Fahrenheit to Celsius
+        # Convert to Celsius for internal use (will be converted back to F in format_hads)
         hi_c = (hi_f - 32) * 5 / 9
         lo_c = (lo_f - 32) * 5 / 9
         
-        return hi_c, lo_c
+        # Load cache and get current climate day boundaries
+        cache = _load_oso_cache(cache_file)
+        day_start = get_midnight(now)
+        day_key = day_start.strftime("%Y-%m-%d")
+        
+        # Initialize or get station's daily cache
+        if stid not in cache:
+            cache[stid] = {}
+        
+        # Reset cache if we're on a new climate day
+        if 'day' not in cache[stid] or cache[stid]['day'] != day_key:
+            cache[stid] = {
+                'day': day_key,
+                'max_hi': hi_c,
+                'min_lo': lo_c,
+                'last_update': oso_time.isoformat()
+            }
+        else:
+            # Update accumulated max/min
+            old_max = cache[stid].get('max_hi', hi_c)
+            old_min = cache[stid].get('min_lo', lo_c)
+            cache[stid]['max_hi'] = max(old_max, hi_c)
+            cache[stid]['min_lo'] = min(old_min, lo_c)
+            cache[stid]['last_update'] = oso_time.isoformat()
+        
+        # Save updated cache
+        _save_oso_cache(cache_file, cache)
+        
+        # Return accumulated daily max and min in Celsius
+        return (cache[stid]['max_hi'], cache[stid]['min_lo'])
         
     except (FileNotFoundError, ValueError, OSError):
         return None, None
-
 
 def format_hads(
     station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime
