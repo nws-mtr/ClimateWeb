@@ -433,7 +433,7 @@ def format_hads(
     wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
 
     if wy_in_station is not None:
-        wy_in = wy_in_station
+        wy_in = wy_in_station + daily_in
         
         if station.get("STID") == 'SFOC1':
             wy_in = wy_in - 0.12
@@ -503,6 +503,9 @@ def format_asos(
 
     stid = (station_b or {}).get("STID", [])
     wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
+
+    wy_in = wy_in + daily_in
+    pct = int((wy_in / norm_in) * 100)
 
     return {
             "stid": station_a.get("STID"),
