@@ -89,6 +89,10 @@ def _compute_daily_from_cumulative(
     if not entries:
         return None
 
+    # Include observations up to 30 minutes after day_end (0800-0830) in the previous day
+    grace_period = timedelta(minutes=30)
+    effective_day_end = day_end + grace_period
+
     def _latest_before(target: datetime) -> Optional[float]:
         for dt_str, val in reversed(entries):
             dt = _parse_dt(dt_str)
@@ -96,7 +100,7 @@ def _compute_daily_from_cumulative(
                 return val
         return None
 
-    latest_val = _latest_before(day_end)
+    latest_val = _latest_before(effective_day_end)
     baseline_val = _latest_before(day_start)
 
     if latest_val is None or baseline_val is None:
@@ -136,6 +140,10 @@ def _compute_precip_from_hourly(
 
     entries.sort(key=lambda item: item[0])
 
+    # Include observations up to 30 minutes after day_end (0800-0830) in the previous day
+    grace_period = timedelta(minutes=30)
+    effective_day_end = day_end + grace_period if period == "daily" else day_end
+
     total = 0.0
     has_any = False
 
@@ -145,7 +153,7 @@ def _compute_precip_from_hourly(
         if val is None:
             continue
 
-        if period == "daily" and (dt < day_start or dt >= day_end):
+        if period == "daily" and (dt < day_start or dt >= effective_day_end):
             continue
 
         has_any = True
@@ -386,7 +394,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         return None, None
 
 def format_hads(
-    station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime
+    station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime, is_current_day: bool = True
 ) -> Dict[str, Any]:
     observations = station.get("OBSERVATIONS", {})
 
@@ -433,7 +441,12 @@ def format_hads(
     wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
 
     if wy_in_station is not None:
-        wy_in = wy_in_station + daily_in
+        # For current day, add daily_in to wy_in_station since ACIS doesn't have today's data yet
+        # For yesterday, don't add daily_in because ACIS already includes it
+        if is_current_day:
+            wy_in = wy_in_station + daily_in
+        else:
+            wy_in = wy_in_station
         
         if station.get("STID") == 'SFOC1':
             wy_in = wy_in - 0.12
@@ -465,6 +478,7 @@ def format_asos(
     day_start: datetime,
     day_end: datetime,
     now: datetime,
+    is_current_day: bool = True,
 ) -> Dict[str, Any]:
     observations = station_a.get("OBSERVATIONS", {})
 
@@ -504,7 +518,11 @@ def format_asos(
     stid = (station_b or {}).get("STID", [])
     wy_in, norm_in, pct = _get_precip_from_acis(stid, now=now)
 
-    wy_in = wy_in + daily_in
+    # For current day, add daily_in since ACIS doesn't have today's data yet
+    # For yesterday, don't add daily_in because ACIS already includes it
+    if is_current_day:
+        wy_in = wy_in + daily_in
+    
     pct = int((wy_in / norm_in) * 100)
 
     return {
@@ -532,6 +550,7 @@ def build_station_payload(
     day_start: datetime,
     day_end: datetime,
     now: datetime | None = None,
+    is_current_day: bool = True,
 ) -> List[Dict[str, Any]]:
     if type is None:
         raise ValueError("Type is required.")
@@ -540,7 +559,7 @@ def build_station_payload(
 
     if type == "HADS":
         return [
-            format_hads(station, day_start=day_start, day_end=day_end, now=current)
+            format_hads(station, day_start=day_start, day_end=day_end, now=current, is_current_day=is_current_day)
             for station in stations_a
         ]
 
@@ -561,6 +580,7 @@ def build_station_payload(
                 day_start=day_start,
                 day_end=day_end,
                 now=current,
+                is_current_day=is_current_day,
             )
             for station_a, station_b in zip(stations_a, stations_b)
         ]

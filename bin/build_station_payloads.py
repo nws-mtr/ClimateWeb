@@ -67,6 +67,7 @@ def build_payloads(current_time: datetime | None = None) -> tuple[Dict[str, Any]
         day_start=today_start,
         day_end=today_end,
         now=now,
+        is_current_day=True,
     )
     payloadB_today = build_station_payload(
         stationsC,
@@ -74,6 +75,7 @@ def build_payloads(current_time: datetime | None = None) -> tuple[Dict[str, Any]
         day_start=today_start,
         day_end=today_end,
         now=now,
+        is_current_day=True,
     )
 
     payloadA_yesterday = build_station_payload(
@@ -83,6 +85,7 @@ def build_payloads(current_time: datetime | None = None) -> tuple[Dict[str, Any]
         day_start=yesterday_start,
         day_end=yesterday_end,
         now=now,
+        is_current_day=False,
     )
     payloadB_yesterday = build_station_payload(
         stationsC,
@@ -90,6 +93,7 @@ def build_payloads(current_time: datetime | None = None) -> tuple[Dict[str, Any]
         day_start=yesterday_start,
         day_end=yesterday_end,
         now=now,
+        is_current_day=False,
     )
 
     combined_today: List[Dict[str, Any]] = payloadA_today + payloadB_today
