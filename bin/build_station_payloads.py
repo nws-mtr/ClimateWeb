@@ -151,6 +151,12 @@ def main() -> None:
     OUTPUT_PATH.write_text(json.dumps(today_payload, indent=2), encoding="utf-8")
     YESTERDAY_OUTPUT_PATH.write_text(json.dumps(yesterday_payload, indent=2), encoding="utf-8")
 
+    ### Path for rsync in deployment env
+    # RSYNC_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # RSYNC_PATH.write_text(json.dumps(today_payload, indent=2), encoding="utf-8")
+    # YESTERDAY_RSYNC_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # YESTERDAY_RSYNC_PATH.write_text(json.dumps(yesterday_payload, indent=2), encoding="utf-8")
+
     print(
         f"Saved station payload and precipitation summary to {OUTPUT_PATH} "
         f"and yesterday snapshot to {YESTERDAY_OUTPUT_PATH}"
