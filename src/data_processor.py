@@ -294,8 +294,13 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
     if stn is None:
         return None, None
     
+    ### Path for local development:
     oso_file = f"{home_dir}\\SFOOSO{stn}"
     cache_file = f"{home_dir}\\oso_cache.json"
+
+    ### Path for deployment environment:
+    # oso_file = f"{home_dir}/SFOOSO{stn}"
+    # cache_file = f"{home_dir}/oso_cache.json"
     
     try:
         with open(oso_file, 'r') as f:
@@ -406,10 +411,15 @@ def format_hads(
 
     # Try to get hourly temps from OSO file
     stid = station.get("STID", "")
+
+    ### Path for local development:
     import os
-    # Use the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     home_dir = os.path.dirname(script_dir)  # Go up one level from src/ to project root
+
+    ### Path for deployment environment:
+    # home_dir = "/ldad/localapps/climateWeb/db"
+
     hourMax, hourMin = _parse_oso_file(stid, now, home_dir)
 
     daily_maxT, daily_minT = _compute_daily_temp_range(

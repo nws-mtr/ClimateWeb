@@ -14,8 +14,16 @@ if str(ROOT_DIR) not in sys.path:
 from bin.fetch_synoptic_data import fetch_synoptic_data
 from src.data_processor import build_station_payload, climate_day_window
 
+### Paths for local development:
 OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads.json"
 YESTERDAY_OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads_yesterday.json"
+
+
+### Paths for deployment environment:
+# OUTPUT_PATH = Path("/ldad/localapps/climateWeb/web/station_payloads.json")
+# YESTERDAY_OUTPUT_PATH = Path("/ldad/localapps/climateWeb/web/station_payloads_yesterday.json")
+# RSYNC_PATH = Path("/data/ldad/CmsRsyncManager/data/incoming/PublicData/climateWeb/station_payloads.json")
+# YESTERDAY_RSYNC_PATH = Path("/data/ldad/CmsRsyncManager/data/incoming/PublicData/climateWeb/station_payloads_yesterday.json")
 
 def _format_day_label(day_start: datetime) -> str:
     try:
