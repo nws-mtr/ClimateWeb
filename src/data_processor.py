@@ -276,11 +276,14 @@ def _save_oso_cache(cache_file: str, cache: Dict[str, Any]) -> None:
         pass
 
 
-def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[float], Optional[float]]:
+def _parse_oso_file(stid: str, now: datetime, home_dir: str, is_current_day: bool = True) -> Tuple[Optional[float], Optional[float]]:
     """
     Parse OSO text file to extract accumulated daily high and low temps.
     Tracks hourly HI/LO values and returns the max HI and min LO since 0800 UTC.
     Returns (hourMax, hourMin) in Celsius if data is fresh (<2 hours old), otherwise (None, None).
+    
+    For yesterday's data (is_current_day=False), reads from oso_cache_yesterday.json if it exists.
+    If yesterday's cache doesn't exist, returns (None, None) to fallback to Synoptic data.
     """
     # Map station IDs to OSO file suffixes
     stn_map = {
@@ -295,13 +298,24 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         return None, None
     
     ### Path for local development:
-    oso_file = f"{home_dir}\\SFOOSO{stn}"
-    cache_file = f"{home_dir}\\oso_cache.json"
+    oso_file = os.path.join(home_dir, f"SFOOSO{stn}")
+    cache_file = os.path.join(home_dir, "oso_cache.json" if is_current_day else "oso_cache_yesterday.json")
 
     ### Path for deployment environment:
     # oso_file = f"{home_dir}/SFOOSO{stn}"
-    # cache_file = f"{home_dir}/oso_cache.json"
+    # cache_file = f"{home_dir}/oso_cache.json" if is_current_day else f"{home_dir}/oso_cache_yesterday.json"
     
+    # For yesterday's data, try to load from cached values only
+    if not is_current_day:
+        cache = _load_oso_cache(cache_file)
+        if cache and stid in cache:
+            station_data = cache[stid]
+            if isinstance(station_data, dict) and 'max_hi' in station_data and 'min_lo' in station_data:
+                return (station_data['max_hi'], station_data['min_lo'])
+        # If yesterday's cache doesn't exist or doesn't have this station, return None to fallback to Synoptic
+        return None, None
+    
+    # For current day, continue with normal OSO file parsing
     try:
         with open(oso_file, 'r') as f:
             content = f.read()
@@ -360,7 +374,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
                     cached_day = station_data['day']
                     if cached_day != day_key:
                         # Archive yesterday's cache
-                        yesterday_cache_file = f"{home_dir}\\oso_cache_yesterday.json"
+                        yesterday_cache_file = os.path.join(home_dir, "oso_cache_yesterday.json")
                         try:
                             _save_oso_cache(yesterday_cache_file, cache)
                         except:
@@ -420,7 +434,7 @@ def format_hads(
     ### Path for deployment environment:
     # home_dir = "/ldad/localapps/climateWeb/db"
 
-    hourMax, hourMin = _parse_oso_file(stid, now, home_dir)
+    hourMax, hourMin = _parse_oso_file(stid, now, home_dir, is_current_day=is_current_day)
 
     daily_maxT, daily_minT = _compute_daily_temp_range(
         air_temp,
