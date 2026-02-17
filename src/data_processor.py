@@ -208,6 +208,10 @@ def _compute_daily_temp_range(
     if air_temp is None:
         return None, None
 
+    # Include observations up to 30 minutes after day_end (0800-0830) in the previous day
+    grace_period = timedelta(minutes=30)
+    effective_day_end = day_end + grace_period
+
     def _iter_in_window(values: Any):
         if values is None:
             return
@@ -215,7 +219,7 @@ def _compute_daily_temp_range(
             if v is None:
                 continue
             dt = _parse_dt(t)
-            if dt >= day_start and dt < day_end:
+            if dt >= day_start and dt < effective_day_end:
                 yield v
 
     hourly_vals = list(_iter_in_window(air_temp))
