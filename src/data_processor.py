@@ -12,6 +12,9 @@ except ImportError:  # pragma: no cover - fallback for older Python
     from backports.zoneinfo import ZoneInfo  # type: ignore
 
 
+### Global flag to determine which paths to use ###
+USE_DEV_PATHS = True  # Set to False for production
+
 def mm_to_in(mm):
     if mm is None:
         return None
@@ -276,11 +279,11 @@ def _save_oso_cache(cache_file: str, cache: Dict[str, Any]) -> None:
         pass
 
 
-def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[float], Optional[float]]:
+def _parse_oso_file(stid: str, now: datetime, home_dir: str, oso_cache_file: Optional[str] = None) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[str]]:
     """
-    Parse OSO text file to extract accumulated daily high and low temps.
+    Parse OSO text file to extract accumulated daily high and low temps, and YTD precipitation.
     Tracks hourly HI/LO values and returns the max HI and min LO since 0800 UTC.
-    Returns (hourMax, hourMin) in Celsius if data is fresh (<2 hours old), otherwise (None, None).
+    Returns (hourMax, hourMin, ytd_precip, last_update) where temps are in Celsius and precip is in mm if data is fresh (<2 hours old), otherwise (None, None, None, None).
     """
     # Map station IDs to OSO file suffixes
     stn_map = {
@@ -292,15 +295,14 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
     
     stn = stn_map.get(stid)
     if stn is None:
-        return None, None
+        return None, None, None, None
     
-    ### Path for local development:
-    oso_file = f"{home_dir}\\SFOOSO{stn}"
-    cache_file = f"{home_dir}\\oso_cache.json"
-
-    ### Path for deployment environment:
-    # oso_file = f"{home_dir}/SFOOSO{stn}"
-    # cache_file = f"{home_dir}/oso_cache.json"
+    if USE_DEV_PATHS:
+        oso_file = f"{home_dir}\\SFOOSO{stn}"
+        cache_file = oso_cache_file or f"{home_dir}\\oso_cache.json"
+    else:
+        oso_file = f"{home_dir}/SFOOSO{stn}"
+        cache_file = oso_cache_file or f"{home_dir}/oso_cache.json"
     
     try:
         with open(oso_file, 'r') as f:
@@ -310,7 +312,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         import re
         time_match = re.search(r'SA (\d{8})', content)
         if not time_match:
-            return None, None
+            return None, None, None, None
         
         time_str = time_match.group(1)
         
@@ -330,17 +332,22 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
         # Check if data is more than 2 hours old
         time_diff = now - oso_time
         if time_diff > timedelta(hours=2):
-            return None, None
+            return None, None, None, None
         
         # Extract HI and LO values (in Fahrenheit)
         hi_match = re.search(r'HI\s+(\d+)', content)
         lo_match = re.search(r'LO\s+(\d+)', content)
+        pcpn_match = re.search(r'PCPN\s+([\d.]+)', content)
         
-        if not hi_match or not lo_match:
-            return None, None
+        if not hi_match or not lo_match or not pcpn_match:
+            return None, None, None, None
         
         hi_f = float(hi_match.group(1))
         lo_f = float(lo_match.group(1))
+        
+        # Extract PCPN value (precipitation)
+        pcpn_in = float(pcpn_match.group(1)) if pcpn_match else None
+        pcpn = pcpn_in * 25.4 if pcpn_in is not None else None  # Convert inches to mm
         
         # Convert to Celsius for internal use (will be converted back to F in format_hads)
         hi_c = (hi_f - 32) * 5 / 9
@@ -359,8 +366,11 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
                 if isinstance(station_data, dict) and 'day' in station_data:
                     cached_day = station_data['day']
                     if cached_day != day_key:
-                        # Archive yesterday's cache
-                        yesterday_cache_file = f"{home_dir}\\oso_cache_yesterday.json"
+                        ### Archive yesterday's cache
+                        if USE_DEV_PATHS:
+                            yesterday_cache_file = f"{home_dir}\\oso_cache_yesterday.json"
+                        else:
+                            yesterday_cache_file = f"{home_dir}/oso_cache_yesterday.json"
                         try:
                             _save_oso_cache(yesterday_cache_file, cache)
                         except:
@@ -379,27 +389,30 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str) -> Tuple[Optional[f
                 'day': day_key,
                 'max_hi': hi_c,
                 'min_lo': lo_c,
+                'ytd_precip': pcpn,
                 'last_update': oso_time.isoformat()
             }
         else:
             # Update accumulated max/min
             old_max = cache[stid].get('max_hi', hi_c)
             old_min = cache[stid].get('min_lo', lo_c)
+            old_precip = cache[stid].get('ytd_precip', pcpn)
             cache[stid]['max_hi'] = max(old_max, hi_c)
             cache[stid]['min_lo'] = min(old_min, lo_c)
+            cache[stid]['ytd_precip'] = pcpn if pcpn is not None else old_precip
             cache[stid]['last_update'] = oso_time.isoformat()
         
         # Save updated cache
         _save_oso_cache(cache_file, cache)
         
-        # Return accumulated daily max and min in Celsius
-        return (cache[stid]['max_hi'], cache[stid]['min_lo'])
+        # Return accumulated daily max and min in Celsius, plus the last update timestamp
+        return (cache[stid]['max_hi'], cache[stid]['min_lo'], cache[stid]['ytd_precip'], cache[stid]['last_update'])
         
     except (FileNotFoundError, ValueError, OSError):
-        return None, None
+        return None, None, None, None
 
 def format_hads(
-    station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime, is_current_day: bool = True
+    station: Dict[str, Any], *, day_start: datetime, day_end: datetime, now: datetime, is_current_day: bool = True, oso_cache_file: Optional[str] = None
 ) -> Dict[str, Any]:
     observations = station.get("OBSERVATIONS", {})
 
@@ -412,15 +425,14 @@ def format_hads(
     # Try to get hourly temps from OSO file
     stid = station.get("STID", "")
 
-    ### Path for local development:
     import os
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    home_dir = os.path.dirname(script_dir)  # Go up one level from src/ to project root
+    if USE_DEV_PATHS:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        home_dir = os.path.dirname(script_dir)  # Go up one level from src/ to project root
+    else:
+        home_dir = "/ldad/localapps/climateWeb/db"
 
-    ### Path for deployment environment:
-    # home_dir = "/ldad/localapps/climateWeb/db"
-
-    hourMax, hourMin = _parse_oso_file(stid, now, home_dir)
+    hourMax, hourMin, ytd_precip, oso_datetime = _parse_oso_file(stid, now, home_dir, oso_cache_file)
 
     daily_maxT, daily_minT = _compute_daily_temp_range(
         air_temp,
@@ -442,8 +454,13 @@ def format_hads(
         day_end,
     )
 
-    wy_accum = unwrap_cumulative(precip_accum or [])
-    wy_latest = wy_accum[-1] if wy_accum else None
+    if ytd_precip is not None:
+        # Use OSO YTD precip if available
+        wy_latest = ytd_precip
+    else:
+        wy_accum = unwrap_cumulative(precip_accum or [])
+        wy_latest = wy_accum[-1] if wy_accum else None
+    
     wy_in_station = mm_to_in(wy_latest)
     daily_in = mm_to_in(daily_accum)
 
@@ -458,11 +475,14 @@ def format_hads(
         else:
             wy_in = wy_in_station
         
-        if station.get("STID") == 'SFOC1':
-            wy_in = wy_in - 0.12
+        # if station.get("STID") == 'SFOC1':
+        #     wy_in = wy_in - 0.12
         
         if norm_in != 9999:
             pct = int((wy_in / norm_in) * 100)
+
+    # Use OSO datetime if available, otherwise use Synoptic datetime
+    dt_latest = oso_datetime if oso_datetime else dt_latest
 
     return {
         "stid": station.get("STID"),
@@ -561,6 +581,7 @@ def build_station_payload(
     day_end: datetime,
     now: datetime | None = None,
     is_current_day: bool = True,
+    oso_cache_file: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     if type is None:
         raise ValueError("Type is required.")
@@ -569,7 +590,7 @@ def build_station_payload(
 
     if type == "HADS":
         return [
-            format_hads(station, day_start=day_start, day_end=day_end, now=current, is_current_day=is_current_day)
+            format_hads(station, day_start=day_start, day_end=day_end, now=current, is_current_day=is_current_day, oso_cache_file=oso_cache_file)
             for station in stations_a
         ]
 
