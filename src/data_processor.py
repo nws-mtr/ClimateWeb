@@ -304,6 +304,7 @@ def _parse_oso_file(stid: str, now: datetime, home_dir: str, oso_cache_file: Opt
         oso_file = f"{home_dir}/SFOOSO{stn}"
         cache_file = oso_cache_file or f"{home_dir}/oso_cache.json"
     
+    # For current day, continue with normal OSO file parsing
     try:
         with open(oso_file, 'r') as f:
             content = f.read()

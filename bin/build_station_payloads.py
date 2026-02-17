@@ -20,9 +20,11 @@ USE_DEV_PATHS = True  # Set to False for production
 if USE_DEV_PATHS:
     OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads.json"
     YESTERDAY_OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads_yesterday.json"
+    YESTERDAY_MARKER_PATH = ROOT_DIR / "web" / ".yesterday_generated"
 else:
     OUTPUT_PATH = Path("/ldad/localapps/climateWeb/web/station_payloads.json")
     YESTERDAY_OUTPUT_PATH = Path("/ldad/localapps/climateWeb/web/station_payloads_yesterday.json")
+    YESTERDAY_MARKER_PATH = Path("/ldad/localapps/climateWeb/web/.yesterday_generated")
     RSYNC_PATH = Path("/data/ldad/CmsRsyncManager/data/incoming/PublicData/climateWeb/station_payloads.json")
     YESTERDAY_RSYNC_PATH = Path("/data/ldad/CmsRsyncManager/data/incoming/PublicData/climateWeb/station_payloads_yesterday.json")
 
@@ -119,6 +121,30 @@ def build_payloads(current_time: datetime | None = None) -> Dict[str, Any]:
     return today_payload
 
 
+def should_generate_yesterday(now: datetime) -> bool:
+    """
+    Check if yesterday's payload should be regenerated based on climate day.
+    
+    Returns True if:
+    - No marker file exists (first run)
+    - Marker file is invalid/corrupted
+    - We've crossed into a new climate day since last generation
+    """
+    if not YESTERDAY_MARKER_PATH.exists():
+        return True
+    
+    try:
+        last_run = datetime.fromisoformat(YESTERDAY_MARKER_PATH.read_text().strip())
+        # Get the climate day start for both timestamps
+        last_day_start, _ = climate_day_window(last_run, days_ago=0)
+        current_day_start, _ = climate_day_window(now, days_ago=0)
+        
+        # Regenerate if we've crossed into a new climate day
+        return current_day_start > last_day_start
+    except (ValueError, OSError):
+        return True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build station payloads for current and previous climate days.")
     parser.add_argument(
@@ -128,6 +154,11 @@ def main() -> None:
             "Override the current UTC time (ISO 8601) for testing, "
             "e.g., 2025-12-01T08:00:00Z"
         ),
+    )
+    parser.add_argument(
+        "--force-yesterday",
+        action="store_true",
+        help="Force regeneration of yesterday's payload even if already generated today"
     )
     args = parser.parse_args()
 

@@ -24,7 +24,7 @@ HADS: List[str] = stations.get("HADS", [])
 
 
 def fetch_synoptic_data(current_time=None) -> Tuple[List[dict], List[dict], List[dict]]:
-    client = SynopticClient(now=current_time)
+    client = SynopticClient(api_key='e0fb17ad65504848934b1f1ece0c78f8', now=current_time)
     try:
         responseA = client.fetch_latest(ASOS)
         responseB = client.fetch_precip(ASOS)
