@@ -21,10 +21,14 @@ if USE_DEV_PATHS:
     OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads.json"
     YESTERDAY_OUTPUT_PATH = ROOT_DIR / "web" / "station_payloads_yesterday.json"
     YESTERDAY_MARKER_PATH = ROOT_DIR / "web" / ".yesterday_generated"
+    OSO_CACHE_PATH = ROOT_DIR / "oso_cache.json"
+    OSO_CACHE_YESTERDAY_PATH = ROOT_DIR / "oso_cache_yesterday.json"
 else:
     OUTPUT_PATH = Path("/ldad/localapps/climateWeb/web/station_payloads.json")
     YESTERDAY_OUTPUT_PATH = Path("/ldad/localapps/climateWeb/web/station_payloads_yesterday.json")
     YESTERDAY_MARKER_PATH = Path("/ldad/localapps/climateWeb/web/.yesterday_generated")
+    OSO_CACHE_PATH = Path("/ldad/localapps/climateWeb/db/oso_cache.json")
+    OSO_CACHE_YESTERDAY_PATH = Path("/ldad/localapps/climateWeb/db/oso_cache_yesterday.json")
     RSYNC_PATH = Path("/data/ldad/CmsRsyncManager/data/incoming/PublicData/climateWeb/station_payloads.json")
     YESTERDAY_RSYNC_PATH = Path("/data/ldad/CmsRsyncManager/data/incoming/PublicData/climateWeb/station_payloads_yesterday.json")
 
@@ -42,9 +46,14 @@ def _format_day_label(day_start: datetime) -> str:
         return day_start.strftime("%Y-%m-%d")
 
 
-def _should_archive(current_day_label: str) -> bool:
-    """Check if we've crossed into a new climate day and need to archive."""
+def _should_archive(current_day_label: str, now: datetime) -> bool:
+    """Check if we need to archive at 0900 on the new climate day."""
     if not OUTPUT_PATH.exists():
+        return False
+
+    day_start, _ = climate_day_window(now, days_ago=0)
+    archive_time = day_start + timedelta(hours=1)
+    if now < archive_time:
         return False
     
     try:
@@ -57,6 +66,14 @@ def _should_archive(current_day_label: str) -> bool:
         return existing_label != current_day_label
     except (json.JSONDecodeError, IOError):
         return False
+
+
+def _archive_oso_cache() -> None:
+    if not OSO_CACHE_PATH.exists():
+        return
+
+    OSO_CACHE_YESTERDAY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OSO_CACHE_YESTERDAY_PATH.write_text(OSO_CACHE_PATH.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 def _parse_as_of(as_of: str | None) -> datetime | None:
@@ -169,19 +186,14 @@ def main() -> None:
     current_day_label = today_payload['meta']['climateDayLabel']
 
     # Check if we need to generate yesterday's payload (on day transition)
-    if _should_archive(current_day_label):
+    if _should_archive(current_day_label, now):
         try:
             # Generate yesterday's payload explicitly using yesterday's OSO cache
             print(f"New climate day detected, generating yesterday's payload...")
             
+            _archive_oso_cache()
             stationsA, stationsB, stationsC = fetch_synoptic_data(current_time=now)
             yesterday_start, yesterday_end = climate_day_window(now, days_ago=1)
-            
-            # Determine yesterday's OSO cache path
-            if USE_DEV_PATHS:
-                yesterday_oso_cache = str(ROOT_DIR / "oso_cache_yesterday.json")
-            else:
-                yesterday_oso_cache = "/ldad/localapps/climateWeb/db/oso_cache_yesterday.json"
             
             payloadA_yesterday = build_station_payload(
                 stationsA,
@@ -199,7 +211,7 @@ def main() -> None:
                 day_end=yesterday_end,
                 now=now,
                 is_current_day=False,
-                oso_cache_file=yesterday_oso_cache,
+                oso_cache_file=str(OSO_CACHE_YESTERDAY_PATH),
             )
             
             combined_yesterday = payloadA_yesterday + payloadB_yesterday
